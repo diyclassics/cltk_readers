@@ -63,15 +63,15 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
                 raise TypeError("lang parameter in TesseraeCorpusReader must be set to 'grc' or 'lat'")
 
         if not sent_tokenizer:
-            if self.lang = 'grc':
+            if self.lang == 'grc':
                 self.sentence_tokenizer = GreekRegexSentenceTokenizer()
-            if self.lang = 'lat':
+            if self.lang == 'lat':
                 self.sentence_tokenizer = LatinPunktSentenceTokenizer()
 
         if not word_tokenizer:
-            if self.lang = 'grc':
+            if self.lang == 'grc':
                 self.word_tokenizer = GreekWordTokenizer()
-            if self.lang = 'lat':
+            if self.lang == 'lat':
                 self.word_tokenizer = LatinWordTokenizer()
 
         self.normalization_form = normalization_form
