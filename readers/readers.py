@@ -23,7 +23,10 @@ from cltk.sentence.grc import GreekRegexSentenceTokenizer
 from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
 
 from pyuca import Collator
+
+
 c = Collator()
+
 
 class TesseraeCorpusReader(PlaintextCorpusReader):
     """
@@ -48,16 +51,16 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         if lang is None:
             if 'greek' in root or 'grc' in root:
                 warnings.warn("lang parameter inferred from document path and set to 'grc'")
-                self.lang == 'grc'
+                self.lang = 'grc'
             elif 'lat' in root:
                 warnings.warn("lang parameter inferred from document path and set to 'lat'")
-                self.lang == 'lat'
+                self.lang = 'lat'
             else:
                 raise TypeError("lang parameter in TesseraeCorpusReader must be set to 'greek' or 'latin'")
         elif lang == 'greek':
-            self.lang == 'grc'
+            self.lang = 'grc'
         elif lang == 'latin':
-            self.lang == 'lat'
+            self.lang = 'lat'
         else:
             if lang not in ['greek', 'grc', 'latin', 'lat']:
                 raise TypeError("lang parameter in TesseraeCorpusReader must be set to 'grc' or 'lat'")
@@ -176,7 +179,8 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         # TODO: check CLTK Latin pos tagger
         raise NotImplementedError
 
-    def concordance(self, fileids: Union[list, str] = None, preprocess: Callable = None, compiled=False) -> Iterator[DefaultDict]:
+    def concordance(self, fileids: Union[list, str] = None, preprocess: Callable = None, compiled=False)\
+            -> Iterator[DefaultDict]:
         """
         Provides a concordance-style data structure, i.e. dictionary with word as key and list of citation/locations
         as value
@@ -200,15 +204,14 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
             items = doc_row.items()
             for citation, text in items:
                 if preprocess:
-                    text = preprocess(self,text)
+                    text = preprocess(self, text)
                 text_tokens = text.split()
                 for i, token in enumerate(text_tokens):
                     if compiled:
-
                         concordance_dict_compiled[token].append((citation, i))
                     else:
                         concordance_dict[token].append((citation, i))
-        # yield sorted(concordance_dict.items())
+            # yield sorted(concordance_dict.items())
             if not compiled:
                 yield sorted(concordance_dict.items(), key=lambda x: c.sort_key(x[0]))
         yield sorted(concordance_dict_compiled.items(), key=lambda x: c.sort_key(x[0]))
