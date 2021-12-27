@@ -11,6 +11,7 @@ from cltk_readers.readers import TesseraeCorpusReader
 from cltk.sentence.grc import GreekRegexSentenceTokenizer
 from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
 
+
 class GreekTesseraeCorpusReader(TesseraeCorpusReader):
     """
     A corpus reader for Greek texts from the Tesserae-CLTK corpus

@@ -11,6 +11,7 @@ from cltk_readers.readers import TesseraeCorpusReader
 from cltk.sentence.lat import LatinPunktSentenceTokenizer
 from cltk.tokenizers.lat.lat import LatinWordTokenizer
 
+
 class LatinTesseraeCorpusReader(TesseraeCorpusReader):
     """
     A corpus reader for Latin texts from the Tesserae-CLTK corpus
