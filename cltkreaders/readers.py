@@ -23,8 +23,6 @@ from cltk.sentence.grc import GreekRegexSentenceTokenizer
 from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
 
 from pyuca import Collator
-
-
 c = Collator()
 
 

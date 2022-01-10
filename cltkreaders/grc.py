@@ -6,7 +6,7 @@ __license__ = "MIT License."
 
 from typing import Callable
 
-from cltk_readers.readers import TesseraeCorpusReader
+from cltkreaders.readers import TesseraeCorpusReader
 
 from cltk.sentence.grc import GreekRegexSentenceTokenizer
 from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
