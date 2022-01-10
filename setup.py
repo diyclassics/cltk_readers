@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
     name='cltk_readers',
-    version='0.1.0',
-    packages=['readers'],
+    version='0.1.1',
+    packages=['cltkreaders'],
     url='https://github.com/diyclassics/cltk_readers',
     license='MIT License',
     author='Patrick J. Burns',

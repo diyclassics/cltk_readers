@@ -1,4 +1,4 @@
-"""Corpus readers to support Greek text collections for use with CLTK; see readers.py for more information
+"""Corpus readers to support Latin text collections for use with CLTK; see readers.py for more information
 """
 
 __author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
@@ -6,18 +6,18 @@ __license__ = "MIT License."
 
 from typing import Callable
 
-from cltk_readers.readers import TesseraeCorpusReader
+from cltkreaders.readers import TesseraeCorpusReader
 
-from cltk.sentence.grc import GreekRegexSentenceTokenizer
-from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
+from cltk.sentence.lat import LatinPunktSentenceTokenizer
+from cltk.tokenizers.lat.lat import LatinWordTokenizer
 
 
-class GreekTesseraeCorpusReader(TesseraeCorpusReader):
+class LatinTesseraeCorpusReader(TesseraeCorpusReader):
     """
-    A corpus reader for Greek texts from the Tesserae-CLTK corpus
+    A corpus reader for Latin texts from the Tesserae-CLTK corpus
     """
 
-    def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8', lang: str = 'grc',
+    def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8', lang: str = 'lat',
                  normalization_form: str = 'NFC',
                  word_tokenizer: Callable = None, sent_tokenizer: Callable = None, **kwargs):
         """
@@ -30,9 +30,9 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
         """
         self.lang = lang
         if not word_tokenizer:
-            self.word_tokenizer = GreekWordTokenizer()
+            self.word_tokenizer = LatinWordTokenizer()
         if not sent_tokenizer:
-            self.sent_tokenizer = GreekRegexSentenceTokenizer()
+            self.sent_tokenizer = LatinPunktSentenceTokenizer()
 
         TesseraeCorpusReader.__init__(self, root, fileids, encoding, self.lang,
                                       word_tokenizer=self.word_tokenizer,
