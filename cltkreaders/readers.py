@@ -178,7 +178,7 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         raise NotImplementedError
 
     def concordance(self, fileids: Union[list, str] = None, preprocess: Callable = None, compiled=False)\
-            -> Iterator[DefaultDict]:
+            -> Iterator[dict]:
         """
         Provides a concordance-style data structure, i.e. dictionary with word as key and list of citation/locations
         as value
@@ -193,26 +193,30 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         :param preprocess: Allows a preprocessing function to be passed to reader task
         :param compiled: If `True`, a single compiled concordance is created for each file in fileids; if `False`,
             a generator with a concordance for each file is created.
-        :yield: Dictionary with citation as key, text as value
+        :yield: Dictionary with token as key, list of citations as value
         """
-        if compiled:
-            concordance_dict_compiled = defaultdict(list)
-        for doc_row in self.doc_rows(fileids):
+
+        def build_concordance(doc_rows):
             concordance_dict = defaultdict(list)
-            items = doc_row.items()
+            items = doc_rows.items()
             for citation, text in items:
                 if preprocess:
                     text = preprocess(text)
                 text_tokens = text.split()
                 for i, token in enumerate(text_tokens):
-                    if compiled:
-                        concordance_dict_compiled[token].append((citation, i))
-                    else:
-                        concordance_dict[token].append((citation, i))
-            # yield sorted(concordance_dict.items())
-            if not compiled:
-                yield sorted(concordance_dict.items(), key=lambda x: c.sort_key(x[0]))
-        yield sorted(concordance_dict_compiled.items(), key=lambda x: c.sort_key(x[0]))
+                    concordance_dict[token].append((citation, i))
+            return sorted(concordance_dict.items(), key=lambda x: c.sort_key(x[0]))
+        
+        if compiled:
+            concordance_dict_compiled = defaultdict(list)
+            for doc_rows in self.doc_rows(fileids):
+                conc = build_concordance(doc_rows)
+                for token, refs in conc:
+                    concordance_dict_compiled[token].extend(refs)
+            yield dict(sorted(concordance_dict_compiled.items(), key=lambda x: c.sort_key(x[0])))
+        else:
+            for doc_rows in self.doc_rows(fileids):
+                yield dict(build_concordance(doc_rows))
 
     def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
         """
