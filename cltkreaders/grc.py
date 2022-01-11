@@ -48,7 +48,7 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
                                       sent_tokenizer=self.sent_tokenizer)
     
     def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
-        for sent in self.sents():
+        for sent in self.sents(fileids):
             data = self.nlp.analyze(text=sent)
             pos_sent = []
             for item in data:

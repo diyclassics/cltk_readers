@@ -131,7 +131,7 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         for doc_row in self.doc_rows(fileids):
             text = '\n'.join(doc_row.values())
             if preprocess:
-                text = preprocess(self, text)
+                text = preprocess(text)
             yield text
 
     def sents(self, fileids: Union[list, str] = None, preprocess: Callable = None,
@@ -148,7 +148,7 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
                 sents = [sent.replace('\n', ' ') for sent in sents]
             for sent in sents:
                 if preprocess:
-                    yield preprocess(self, sent)
+                    yield preprocess(sent)
                 else:
                     yield sent
 
@@ -202,7 +202,7 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
             items = doc_row.items()
             for citation, text in items:
                 if preprocess:
-                    text = preprocess(self, text)
+                    text = preprocess(text)
                 text_tokens = text.split()
                 for i, token in enumerate(text_tokens):
                     if compiled:
