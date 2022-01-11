@@ -6,7 +6,7 @@ __license__ = "MIT License."
 
 from typing import Callable, Iterator, Union
 
-from cltkreaders.readers import TesseraeCorpusReader
+from readers import TesseraeCorpusReader
 
 from cltk import NLP
 from cltk.core.data_types import Pipeline
@@ -50,7 +50,7 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
                                       sent_tokenizer=self.sent_tokenizer)
 
     def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
-        for sent in self.sents():
+        for sent in self.sents(fileids):
             data = self.nlp.analyze(text=sent)
             pos_sent = []
             for item in data:
