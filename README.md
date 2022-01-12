@@ -27,18 +27,18 @@ NB: You need to have the path and a regex for matching filenames to use the read
 
 ```
 >>> pprint(next(tess.concordance('vergil.aeneid.part.1.tess')))
-...
- ('sensit', [('<verg. aen. 1.125>', 2)]),
- ('sententia',
-  [('<verg. aen. 1.237>', 4),
-   ('<verg. aen. 1.260>', 4),
-   ('<verg. aen. 1.582>', 5)]),
- ('septem',
-  [('<verg. aen. 1.71>', 3),
-   ('<verg. aen. 1.170>', 1),
-   ('<verg. aen. 1.192>', 4),
-   ('<verg. aen. 1.383>', 1)]),
-...
+{
+  ...
+  'sensit': [('<verg. aen. 1.125>', 2)],
+  'sententia': [('<verg. aen. 1.237>', 4),
+               ('<verg. aen. 1.260>', 4),
+               ('<verg. aen. 1.582>', 5)],
+  'septem': [('<verg. aen. 1.71>', 3),
+            ('<verg. aen. 1.170>', 1),
+            ('<verg. aen. 1.192>', 4),
+            ('<verg. aen. 1.383>', 1)],
+  ...
+}
 ```
 
 ## Corpora supported (so far!)
