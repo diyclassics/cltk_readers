@@ -40,8 +40,13 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
 
         if not word_tokenizer:
             self.word_tokenizer = GreekWordTokenizer()
+        else:
+            self.word_tokenizer = word_tokenizer
+
         if not sent_tokenizer:
             self.sent_tokenizer = GreekRegexSentenceTokenizer()
+        else:
+            self.sent_tokenizer = sent_tokenizer
 
         TesseraeCorpusReader.__init__(self, root, fileids, encoding, self.lang,
                                       word_tokenizer=self.word_tokenizer,
