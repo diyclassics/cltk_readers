@@ -33,16 +33,21 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
         :param kwargs: Miscellaneous keyword arguments
         """
         self.lang = lang
+        
         pipeline = Pipeline(description="Latin pipeline for Tesserae readers", 
                             processes=[LatinNormalizeProcess, LatinStanzaProcess], 
                             language=get_lang(self.lang))
         self.nlp = NLP(language=lang, custom_pipeline=pipeline, suppress_banner=True)
 
-        self.lang = lang
         if not word_tokenizer:
             self.word_tokenizer = LatinWordTokenizer()
+        else:
+            self.word_tokenizer = word_tokenizer
+
         if not sent_tokenizer:
             self.sent_tokenizer = LatinPunktSentenceTokenizer()
+        else:
+            self.sent_tokenizer = sent_tokenizer
 
         
         TesseraeCorpusReader.__init__(self, root, fileids, encoding, self.lang,
