@@ -6,7 +6,6 @@ A corpus-reader extension for CLTK
 
 ## Usage
 ```
->>> from os.path import expanduser
 >>> from cltkreaders.lat import LatinTesseraeCorpusReader
 >>> tess = LatinTesseraeCorpusReader()
 ```
