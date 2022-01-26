@@ -25,6 +25,7 @@ from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
 from pyuca import Collator
 c = Collator()
 
+
 class TesseraeCorpusReader(PlaintextCorpusReader):
     """
     Generic corpus reader for texts from the Tesserae-CLTK corpus
@@ -48,30 +49,30 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         if lang is None:
             if 'greek' in root or 'grc' in root:
                 warnings.warn("lang parameter inferred from document path and set to 'grc'")
-                self.lang == 'grc'
+                self.lang = 'grc'
             elif 'lat' in root:
                 warnings.warn("lang parameter inferred from document path and set to 'lat'")
-                self.lang == 'lat'
+                self.lang = 'lat'
             else:
                 raise TypeError("lang parameter in TesseraeCorpusReader must be set to 'greek' or 'latin'")
         elif lang == 'greek':
-            self.lang == 'grc'
+            self.lang = 'grc'
         elif lang == 'latin':
-            self.lang == 'lat'
+            self.lang = 'lat'
         else:
             if lang not in ['greek', 'grc', 'latin', 'lat']:
                 raise TypeError("lang parameter in TesseraeCorpusReader must be set to 'grc' or 'lat'")
 
         if not sent_tokenizer:
-            if self.lang = 'grc':
+            if self.lang == 'grc':
                 self.sentence_tokenizer = GreekRegexSentenceTokenizer()
-            if self.lang = 'lat':
+            if self.lang == 'lat':
                 self.sentence_tokenizer = LatinPunktSentenceTokenizer()
 
         if not word_tokenizer:
-            if self.lang = 'grc':
+            if self.lang == 'grc':
                 self.word_tokenizer = GreekWordTokenizer()
-            if self.lang = 'lat':
+            if self.lang == 'lat':
                 self.word_tokenizer = LatinWordTokenizer()
 
         self.normalization_form = normalization_form
@@ -130,7 +131,7 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         for doc_row in self.doc_rows(fileids):
             text = '\n'.join(doc_row.values())
             if preprocess:
-                text = preprocess(self, text)
+                text = preprocess(text)
             yield text
 
     def sents(self, fileids: Union[list, str] = None, preprocess: Callable = None,
@@ -147,7 +148,7 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
                 sents = [sent.replace('\n', ' ') for sent in sents]
             for sent in sents:
                 if preprocess:
-                    yield preprocess(self, sent)
+                    yield preprocess(sent)
                 else:
                     yield sent
 
@@ -176,7 +177,8 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         # TODO: check CLTK Latin pos tagger
         raise NotImplementedError
 
-    def concordance(self, fileids: Union[list, str] = None, preprocess: Callable = None, compiled=False) -> Iterator[DefaultDict]:
+    def concordance(self, fileids: Union[list, str] = None, preprocess: Callable = None, compiled=False)\
+            -> Iterator[dict]:
         """
         Provides a concordance-style data structure, i.e. dictionary with word as key and list of citation/locations
         as value
@@ -191,27 +193,30 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         :param preprocess: Allows a preprocessing function to be passed to reader task
         :param compiled: If `True`, a single compiled concordance is created for each file in fileids; if `False`,
             a generator with a concordance for each file is created.
-        :yield: Dictionary with citation as key, text as value
+        :yield: Dictionary with token as key, list of citations as value
         """
-        if compiled:
-            concordance_dict_compiled = defaultdict(list)
-        for doc_row in self.doc_rows(fileids):
+
+        def build_concordance(doc_rows):
             concordance_dict = defaultdict(list)
-            items = doc_row.items()
+            items = doc_rows.items()
             for citation, text in items:
                 if preprocess:
-                    text = preprocess(self,text)
+                    text = preprocess(text)
                 text_tokens = text.split()
                 for i, token in enumerate(text_tokens):
-                    if compiled:
-
-                        concordance_dict_compiled[token].append((citation, i))
-                    else:
-                        concordance_dict[token].append((citation, i))
-        # yield sorted(concordance_dict.items())
-            if not compiled:
-                yield sorted(concordance_dict.items(), key=lambda x: c.sort_key(x[0]))
-        yield sorted(concordance_dict_compiled.items(), key=lambda x: c.sort_key(x[0]))
+                    concordance_dict[token].append((citation, i))
+            return sorted(concordance_dict.items(), key=lambda x: c.sort_key(x[0]))
+        
+        if compiled:
+            concordance_dict_compiled = defaultdict(list)
+            for doc_rows in self.doc_rows(fileids):
+                conc = build_concordance(doc_rows)
+                for token, refs in conc:
+                    concordance_dict_compiled[token].extend(refs)
+            yield dict(sorted(concordance_dict_compiled.items(), key=lambda x: c.sort_key(x[0])))
+        else:
+            for doc_rows in self.doc_rows(fileids):
+                yield dict(build_concordance(doc_rows))
 
     def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
         """
