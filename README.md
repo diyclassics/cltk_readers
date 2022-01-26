@@ -5,14 +5,10 @@ A corpus-reader extension for CLTK
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
 
 ## Usage
-NB: You need to have the path and a regex for matching filenames to use the readers.
-
 ```
 >>> from os.path import expanduser
 >>> from cltkreaders.lat import LatinTesseraeCorpusReader
->>> CLTK_DATA_PATH = expanduser('~/cltk_data/lat/text/lat_text_tesserae/texts')
->>> TESS_PATTERN = '.*\.tess'
->>> tess = LatinTesseraeCorpusReader(CLTK_DATA_PATH, TESS_PATTERN)
+>>> tess = LatinTesseraeCorpusReader()
 ```
 
 ```

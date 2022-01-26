@@ -4,9 +4,10 @@
 __author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
 __license__ = "MIT License."
 
+import os.path
 from typing import Callable, Iterator, Union
 
-from cltkreaders.readers import TesseraeCorpusReader
+from readers import TesseraeCorpusReader
 
 from cltk import NLP
 from cltk.core.data_types import Pipeline
@@ -16,12 +17,16 @@ from cltk.dependency.processes import GreekStanzaProcess
 from cltk.sentence.grc import GreekRegexSentenceTokenizer
 from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
 
+from cltk.utils import get_cltk_data_dir, query_yes_no
+from cltk.data.fetch import FetchCorpus
+from cltk.core.exceptions import CLTKException
+
 class GreekTesseraeCorpusReader(TesseraeCorpusReader):
     """
     A corpus reader for Greek texts from the Tesserae-CLTK corpus
     """
 
-    def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8', lang: str = 'grc',
+    def __init__(self, root: str = None, fileids: str = r'.*\.tess', encoding: str = 'utf-8', lang: str = 'grc',
                  normalization_form: str = 'NFC',
                  word_tokenizer: Callable = None, sent_tokenizer: Callable = None, **kwargs):
         """
@@ -33,6 +38,11 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
         :param kwargs: Miscellaneous keyword arguments
         """
         self.lang = lang
+        self.corpus = "grc_text_tesserae"
+        self._root = root
+
+        self.check_corpus()
+
         pipeline = Pipeline(description="Greek pipeline for Tesserae readers", 
                             processes=[GreekNormalizeProcess, GreekStanzaProcess], 
                             language=get_lang(self.lang))
@@ -43,10 +53,44 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
         if not sent_tokenizer:
             self.sent_tokenizer = GreekRegexSentenceTokenizer()
 
-        TesseraeCorpusReader.__init__(self, root, fileids, encoding, self.lang,
+        TesseraeCorpusReader.__init__(self, self.root, fileids, encoding, self.lang,
                                       word_tokenizer=self.word_tokenizer,
                                       sent_tokenizer=self.sent_tokenizer)
-    
+
+    @property
+    def root(self):
+        if not self._root:
+            self._root = os.path.join(
+                            get_cltk_data_dir(),
+                            f"{self.lang}/text/{self.corpus}/texts")
+        return self._root
+
+    def check_corpus(self):
+        print(f'ROOT = {self.root}')
+        if not os.path.isdir(self.root):
+            if self.root != os.path.join(
+                    get_cltk_data_dir(),
+                    f"{self.lang}/text/{self.corpus}/texts"):
+                raise CLTKException(
+                    f"Failed to instantiate GreekTesseraeCorpusReader. Root folder not found."
+                )                        
+            else:
+                print(  # pragma: no cover
+                    f"CLTK message: Unless a path is specifically passed to the 'root' parameter, this corpus reader expects to find the CLTK-Tesserae texts at {f'{self.lang}/text/{self.lang}_text_tesserae/texts'}."
+                )  # pragma: no cover
+                dl_is_allowed = query_yes_no(
+                    f"Do you want to download CLTK-Tesserae Greek files?"
+                )  # type: bool
+                if dl_is_allowed:
+                    fetch_corpus = FetchCorpus(language=self.lang)
+                    fetch_corpus.import_corpus(
+                        corpus_name=self.corpus
+                    )
+                else:
+                    raise CLTKException(
+                        f"Failed to instantiate GreekTesseraeCorpusReader. Rerun with 'root' parameter set to folder with .tess files or download the corpus to the CLTK_DATA folder."                                      
+                    )
+
     def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
         for sent in self.sents(fileids):
             data = self.nlp.analyze(text=sent)
