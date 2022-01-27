@@ -7,6 +7,7 @@ __author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
 __license__ = "MIT License."
 
 import os
+import warnings
 import codecs
 import unicodedata
 import time
@@ -15,6 +16,7 @@ from typing import Callable, DefaultDict, Iterator, Union
 from collections import defaultdict
 
 from nltk import FreqDist
+from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
 
 from cltk.sentence.lat import LatinPunktSentenceTokenizer
@@ -262,3 +264,190 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
             'lexdiv': float(counts['words']) / float(len(tokens)),
             'secs': time.time() - started,
         }
+
+class UDCorpusReader(CorpusReader):
+    """
+    Generic corpus reader for texts from the UD treebanks
+    """
+    def __init__(self, root: str, fileids: str = r'.*\.conllu', 
+                 columns: list = ['ID', 'FORM', 'LEMMA', 'UPOS', 'XPOS', 'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC'], 
+                 encoding: str = 'utf-8', lang: str = None, normalization_form: str = 'NFC', **kwargs):
+        """
+        :param root: Location of conllu files to be read into corpus reader
+        :param fileids: Pattern for matching files to be read into corpus reader
+        :param encoding: Text encoding for associated files; defaults to 'utf-8'
+        :param lang: Allows a language to be selected for language-specific corpus tasks
+        :param normalization_form: Normalization form for associated files; defaults to 'NFC'
+        :param kwargs: Miscellaneous keyword arguments
+        """
+        if lang:
+            self.lang = lang.lower()
+        self.columns = columns
+        self.normalization_form = normalization_form
+        CorpusReader.__init__(self, root, fileids, encoding)
+
+    def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :yield: Plaintext content of UD file
+        """
+        for path, encoding in self.abspaths(fileids, include_encoding=True):
+            with codecs.open(path, 'r', encoding=encoding) as f:
+                doc = f.read()
+                doc = unicodedata.normalize(self.normalization_form, doc)
+                doc = doc.strip()
+                yield doc
+    
+    texts = docs # alias for docs
+
+    def paras(self, fileids: Union[list, str] = None):
+        """
+        UD documents do not have include paragraph divisions
+        """
+        raise NotImplementedError
+
+    def sent_blocks(self, fileids: Union[list, str] = None) -> Iterator[str]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :return: Sentence-level blocks of text in UD files 
+        """
+        for doc in self.docs(fileids):
+            sent_blocks_ = doc.split('\n\n')
+            for sent_block in sent_blocks_:
+                yield sent_block
+
+    def sent_dicts(self, fileids: Union[list, str] = None) -> Iterator[str]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :return: Sentence-level blocks divided as dictionaries with columnar data 
+        """        
+        for sent_block in self.sent_blocks(fileids):
+            sent_lines = sent_block.split('\n')
+            data_lines = [line.split('\t') for line in sent_lines if not line.startswith('#') and line]
+            sent_dicts_ = []
+            for data_line in data_lines:
+                data_line_ = {k: v for k, v in zip(self.columns, data_line)}
+                sent_dicts_.append(data_line_)
+            yield sent_dicts_
+
+    def sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :param preprocess: Allows a preprocessing function to be passed to reader task
+        :yield: List of sentences from Tesserae documents
+        """        
+        for sent_block in self.sent_blocks(fileids):
+            for row in sent_block.split('\n'):
+                if row.startswith('# text = '):
+                    sent = row.replace('# text = ', '')
+                    if preprocess:
+                        yield preprocess(sent)
+                    else:
+                        yield sent
+
+    def tokenized_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :param preprocess: Allows a preprocessing function to be passed to reader task
+        :yield: List of words from UD documents
+        """
+        for sent in self.sent_dicts(fileids):
+            tokenized_sent = [item['FORM'] for item in sent]
+            if preprocess:
+                yield preprocess(" ".join(tokenized_sent)).split()
+            else:
+                yield tokenized_sent
+
+    def lemmatized_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :param preprocess: Allows a preprocessing function to be passed to reader task
+        :yield: List of words from UD documents
+        """
+        for sent in self.sent_dicts(fileids):
+            tokenized_sent = [item['LEMMA'] for item in sent]
+            if preprocess:
+                yield preprocess(" ".join(tokenized_sent)).split()
+            else:
+                yield tokenized_sent                
+
+    def words(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :param preprocess: Allows a preprocessing function to be passed to reader task
+        :yield: List of words from UD documents
+        """
+        for tokenized_sent in self.tokenized_sents(fileids, preprocess=preprocess):
+            for token in tokenized_sent:
+                yield token
+
+    def lemmas(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :param preprocess: Allows a preprocessing function to be passed to reader task
+        :yield: List of words from UD documents
+        """
+        for lemmatized_sent in self.lemmatized_sents(fileids, preprocess=preprocess):
+            for lemma in lemmatized_sent:
+                yield lemma
+
+    def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :param preprocess: Allows a preprocessing function to be passed to reader task
+        :yield: List of data from UD documents in form TOKEN/POS
+        """
+        for sent in self.sent_dicts(fileids):
+            # pos_sent = [f'{item["FORM"]}/{item["UPOS"]}' for item in sent]
+            tokenized_sent = [item['FORM'] for item in sent]
+            pos_sent = [item['UPOS'] for item in sent]
+            if preprocess:
+                tokenized_sent = [preprocess(token).replace(' ','') for token in tokenized_sent]
+            pos_sent = zip(tokenized_sent, pos_sent)
+            pos_sent = [f"{item[0]}/{item[1]}" for item in pos_sent if item[0]]
+            yield pos_sent
+
+    def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :yield: Size of UD document
+        """
+        for path in self.abspaths(fileids):
+            yield os.path.getsize(path)
+
+    def describe(self, fileids: Union[list, str] = None) -> dict:
+        """
+        Performs a single pass of the corpus and returns a dictionary with a variety of metrics concerning the state
+        of the corpus.
+        """
+        started = time.time()
+
+        # Structures to perform counting.
+        counts = FreqDist()
+        tokens = FreqDist()
+
+        # Perform single pass over paragraphs, tokenize and count
+        for sent in self.sents(fileids):
+            counts['sents'] += 1
+
+        for word in self.words(fileids):
+            counts['words'] += 1
+            tokens[word] += 1
+
+        # Compute the number of files and categories in the corpus
+        if isinstance(fileids, str):
+            n_fileids = 1
+        elif isinstance(fileids, list):
+            n_fileids = len(fileids)
+        else:
+            n_fileids = len(self.fileids())
+
+        # Return data structure with information
+        return {
+            'files': n_fileids,
+            'sents': counts['sents'],
+            'words': counts['words'],
+            'vocab': len(tokens),
+            'lexdiv': float(counts['words']) / float(len(tokens)),
+            'secs': time.time() - started,
+        }            
