@@ -1,6 +1,8 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
+Version 0.2.0.; tested on Python 3.9.10, CLTK 1.0.22
+
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
 
@@ -39,3 +41,5 @@ A corpus-reader extension for CLTK
 ## Corpora supported (so far!)
 - [CLTK Tesserae Latin Corpus](https://github.com/cltk/lat_text_tesserae)
 - [CLTK Tesserae Greek Corpus](https://github.com/cltk/grc_text_tesserae)
+
+*Coded 2.9.2022 by [Patrick J. Burns](http://github.com/diyclassics)*
