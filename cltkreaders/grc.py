@@ -41,7 +41,7 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
         self.corpus = "grc_text_tesserae"
         self._root = root
 
-        self.check_corpus()
+        self.__check_corpus()
 
         pipeline = Pipeline(description="Greek pipeline for Tesserae readers", 
                             processes=[GreekNormalizeProcess, GreekStanzaProcess], 
@@ -70,7 +70,7 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
                             f"{self.lang}/text/{self.corpus}/texts")
         return self._root
 
-    def check_corpus(self):
+    def __check_corpus(self):
         print(f'ROOT = {self.root}')
         if not os.path.isdir(self.root):
             if self.root != os.path.join(

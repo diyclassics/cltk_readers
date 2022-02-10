@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='cltk_readers',
-    version='0.2.0',
+    version='0.2.1',
     packages=['cltkreaders'],
     url='https://github.com/diyclassics/cltk_readers',
     license='MIT License',
