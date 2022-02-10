@@ -6,7 +6,6 @@ __license__ = "MIT License."
 
 import os.path
 from typing import Callable, Iterator, Union
-
 from cltkreaders.readers import TesseraeCorpusReader
 
 from cltk import NLP
