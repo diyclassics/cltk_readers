@@ -67,9 +67,9 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
 
         if not sent_tokenizer:
             if self.lang == 'grc':
-                self.sentence_tokenizer = GreekRegexSentenceTokenizer()
+                self.sent_tokenizer = GreekRegexSentenceTokenizer()
             if self.lang == 'lat':
-                self.sentence_tokenizer = LatinPunktSentenceTokenizer()
+                self.sent_tokenizer = LatinPunktSentenceTokenizer()
 
         if not word_tokenizer:
             if self.lang == 'grc':
