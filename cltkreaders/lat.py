@@ -41,7 +41,7 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
         self.corpus = "lat_text_tesserae"
         self._root = root
 
-        self.check_corpus()
+        self.__check_corpus()
 
         
         pipeline = Pipeline(description="Latin pipeline for Tesserae readers", 
@@ -72,7 +72,7 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
                             f"{self.lang}/text/{self.corpus}/texts")
         return self._root
 
-    def check_corpus(self):
+    def __check_corpus(self):
         if not os.path.isdir(self.root):
             if self.root != os.path.join(
                     get_cltk_data_dir(),

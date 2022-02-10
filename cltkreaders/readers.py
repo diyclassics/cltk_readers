@@ -7,6 +7,7 @@ __author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
 __license__ = "MIT License."
 
 import os
+import warnings
 import codecs
 import unicodedata
 import time
@@ -44,7 +45,8 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         """
 
         # Tesserae readers at present are limited to support for Greek and Latin; check on instantiation
-        lang = lang.lower()
+        if lang:
+            self.lang = lang.lower()
 
         if lang is None:
             if 'greek' in root or 'grc' in root:
@@ -116,10 +118,13 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
 
             lines = [line for line in doc.split('\n') if line]
             for line in lines:
-                k, v = line.split('>', 1)
-                k = f'{k}>'
-                v = v.strip()
-                rows.append((k, v))
+                try:
+                    k, v = line.split('>', 1)
+                    k = f'{k}>'
+                    v = v.strip()
+                    rows.append((k, v))
+                except:
+                    print(f'The following line is not formatted corrected and has been skipped: {line}\n')
             yield dict(rows)
 
     def texts(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[str]:
@@ -217,6 +222,14 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
         else:
             for doc_rows in self.doc_rows(fileids):
                 yield dict(build_concordance(doc_rows))
+
+    def citation(self):
+        with open(f'{self.root}/../citation.bib', 'r') as f:
+            return f.read()   
+
+    def license(self):
+        with open(f'{self.root}/../LICENSE.md', 'r') as f:
+            return f.read()               
 
     def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
         """
