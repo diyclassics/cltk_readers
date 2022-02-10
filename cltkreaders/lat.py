@@ -5,6 +5,7 @@ __author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
 __license__ = "MIT License."
 
 import os.path
+from abc import ABC
 from typing import Callable, Iterator, Union
 
 from cltkreaders.readers import TesseraeCorpusReader
@@ -16,12 +17,12 @@ from cltk.alphabet.processes import LatinNormalizeProcess
 from cltk.dependency.processes import LatinStanzaProcess
 from cltk.sentence.lat import LatinPunktSentenceTokenizer
 from cltk.tokenizers.lat.lat import LatinWordTokenizer
-
 from cltk.utils import get_cltk_data_dir, query_yes_no
 from cltk.data.fetch import FetchCorpus
 from cltk.core.exceptions import CLTKException
 
-class LatinTesseraeCorpusReader(TesseraeCorpusReader):
+
+class LatinTesseraeCorpusReader(TesseraeCorpusReader, ABC):
     """
     A corpus reader for Latin texts from the Tesserae-CLTK corpus
     """
@@ -42,7 +43,6 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
         self._root = root
 
         self.check_corpus()
-
         
         pipeline = Pipeline(description="Latin pipeline for Tesserae readers", 
                             processes=[LatinNormalizeProcess, LatinStanzaProcess], 
@@ -58,7 +58,6 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
             self.sent_tokenizer = LatinPunktSentenceTokenizer()
         else:
             self.sent_tokenizer = sent_tokenizer
-
         
         TesseraeCorpusReader.__init__(self, self.root, fileids, encoding, self.lang,
                                       word_tokenizer=self.word_tokenizer,
@@ -81,8 +80,10 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
                     f"Failed to instantiate LatinTesseraeCorpusReader. Root folder not found."
                 )                        
             else:
+                cltk_data_dir: str = get_cltk_data_dir()
+                tesserae_dir: str = os.path.join(cltk_data_dir, self.lang, "text", self.lang + "_text_tesserae/texts")
                 print(  # pragma: no cover
-                    f"CLTK message: Unless a path is specifically passed to the 'root' parameter, this corpus reader expects to find the CLTK-Tesserae texts at {f'{self.lang}/text/{self.lang}_text_tesserae/texts'}."
+                    f"CLTK Readers message: Unless a path is specifically passed to the 'root' parameter, this corpus reader expects to find the CLTK-Tesserae texts at '{tesserae_dir}'."
                 )  # pragma: no cover
                 dl_is_allowed = query_yes_no(
                     f"Do you want to download CLTK-Tesserae Latin files?"
