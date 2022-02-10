@@ -4,25 +4,28 @@ A corpus-reader extension for CLTK
 Version 0.2.0.; tested on Python 3.9.10, CLTK 1.0.22
 
 ## Installation
+
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
 
 ## Usage
-```
+
+``` python
 >>> from cltkreaders.lat import LatinTesseraeCorpusReader
 >>> tess = LatinTesseraeCorpusReader()
 ```
 
-```
+``` python
 >>> print(tess.fileids())
 ['ammianus.rerum_gestarum.part.14.tess', 'ammianus.rerum_gestarum.part.15.tess', 'ammianus.rerum_gestarum.part.16.tess', 'ammianus.rerum_gestarum.part.17.tess', ...]
 ```
 
-```
+``` python
 >>> print(next(tess.tokenized_sents('vergil.aeneid.part.1.tess')))
 ['Arma', 'virum', '-que', 'cano', ',', 'Troiae', 'qui', 'primus', 'ab', 'oris', 'Italiam', ',', 'fato', 'profugus', ',', 'Lavinia', '-que', 'venit', 'litora', ',', 'multum', 'ille', 'et', 'terris', 'iactatus', 'et', 'alto', 'vi', 'superum', 'saevae', 'memorem', 'Iunonis', 'ob', 'iram', ';', 'multa', 'quoque', 'et', 'bello', 'passus', ',', 'dum', 'conderet', 'urbem', ',', 'inferret', '-que', 'deos', 'Latio', ',', 'genus', 'unde', 'Latinum', ',', 'Albani', '-que', 'patres', ',', 'atque', 'altae', 'moenia', 'Romae', '.']
 ```
 
-```
+``` python
+>>> from pprint import pprint
 >>> pprint(next(tess.concordance('vergil.aeneid.part.1.tess')))
 {
   ...
@@ -37,6 +40,12 @@ Version 0.2.0.; tested on Python 3.9.10, CLTK 1.0.22
   ...
 }
 ```
+
+``` python
+>>> [x for x in tess.pos_sents(fileids=['ammianus.rerum_gestarum.part.14.tess'])][0]
+['Galli/NOUN', 'Caesaris/NOUN', 'saevitia/NOUN', './PUNCT']
+```
+
 
 ## Corpora supported (so far!)
 - [CLTK Tesserae Latin Corpus](https://github.com/cltk/lat_text_tesserae)
