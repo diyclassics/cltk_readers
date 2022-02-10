@@ -267,52 +267,7 @@ class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
             for doc_rows in self.doc_rows(fileids):
                 yield dict(build_concordance(doc_rows))
 
-    # def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
-    #     """
-    #     :param fileids: Subset of files to be processed by reader tasks
-    #     :yield: Size of Tesserae document
-    #     """
-    #     for path in self.abspaths(fileids):
-    #         yield os.path.getsize(path)
-
-    # def describe(self, fileids: Union[list, str] = None) -> dict:
-    #     """
-    #     Performs a single pass of the corpus and returns a dictionary with a variety of metrics concerning the state
-    #     of the corpus.
-    #     """
-    #     started = time.time()
-
-    #     # Structures to perform counting.
-    #     counts = FreqDist()
-    #     tokens = FreqDist()
-
-    #     # Perform single pass over paragraphs, tokenize and count
-    #     for sent in self.sents(fileids):
-    #         counts['sents'] += 1
-
-    #     for word in self.words(fileids):
-    #         counts['words'] += 1
-    #         tokens[word] += 1
-
-    #     # Compute the number of files and categories in the corpus
-    #     if isinstance(fileids, str):
-    #         n_fileids = 1
-    #     elif isinstance(fileids, list):
-    #         n_fileids = len(fileids)
-    #     else:
-    #         n_fileids = len(self.fileids())
-
-    #     # Return data structure with information
-    #     return {
-    #         'files': n_fileids,
-    #         'sents': counts['sents'],
-    #         'words': counts['words'],
-    #         'vocab': len(tokens),
-    #         'lexdiv': float(counts['words']) / float(len(tokens)),
-    #         'secs': time.time() - started,
-    #     }
-
-class UDCorpusReader(CorpusReader):
+class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
     """
     Generic corpus reader for texts from the UD treebanks
     """
@@ -453,56 +408,3 @@ class UDCorpusReader(CorpusReader):
             pos_sent = zip(tokenized_sent, pos_sent)
             pos_sent = [f"{item[0]}/{item[1]}" for item in pos_sent if item[0]]
             yield pos_sent
-
-    # def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
-    #     """
-    #     :param fileids: Subset of files to be processed by reader tasks
-    #     :yield: Size of UD document
-    #     """
-    #     for path in self.abspaths(fileids):
-    #         yield os.path.getsize(path)
-
-    # def describe(self, fileids: Union[list, str] = None) -> dict:
-    #     """
-    #     Performs a single pass of the corpus and returns a dictionary with a variety of metrics concerning the state
-    #     of the corpus.
-    #     """
-    #     started = time.time()
-
-    #     # Structures to perform counting.
-    #     counts = FreqDist()
-    #     tokens = FreqDist()
-
-    #     # Perform single pass over paragraphs, tokenize and count
-    #     for sent in self.sents(fileids):
-    #         counts['sents'] += 1
-
-    #     for word in self.words(fileids):
-    #         counts['words'] += 1
-    #         tokens[word] += 1
-
-    #     # Compute the number of files and categories in the corpus
-    #     if isinstance(fileids, str):
-    #         n_fileids = 1
-    #     elif isinstance(fileids, list):
-    #         n_fileids = len(fileids)
-    #     else:
-    #         n_fileids = len(self.fileids())
-
-    #     # Return data structure with information
-    #     return {
-    #         'files': n_fileids,
-    #         'sents': counts['sents'],
-    #         'words': counts['words'],
-    #         'vocab': len(tokens),
-    #         'lexdiv': float(counts['words']) / float(len(tokens)),
-    #         'secs': time.time() - started,
-    #     }            
-
-if __name__== '__main__':
-    from os.path import expanduser
-    tess = TesseraeCorpusReader(expanduser('~/cltk_data/lat/text/lat_text_tesserae/texts'), r'.*\.tess', lang='lat')
-    file = tess.fileids()[:1]
-    print(file)
-    print(next(tess.sizes()))
-    print(tess.describe(file))
