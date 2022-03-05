@@ -246,11 +246,22 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
             return f.read()
 
     def metadata(self, label, fileids=None):
+        if not label:
+            return None
         if not fileids:
-            fileids = self.fileids() 
-        records = [self.metadata_.get(fileid, None) for fileid in fileids]
-        label_records = [record.get(label, None) if record else None for record in records]
-        return label_records   
+            fileids = self.fileids()
+
+        #TODO: Shouldn't self.fileids() handle str/lst    
+        if isstring(fileids):
+            record = self.metadata_.get(fileids, None)
+            if record:
+                return record.get(label, None)
+            else:
+                return None
+        else:
+            records = [self.metadata_.get(fileid, None) for fileid in fileids]
+            label_records = [record.get(label, None) if record else None for record in records]
+            return label_records  
 
     def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
         """
