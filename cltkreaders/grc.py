@@ -74,7 +74,6 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
         return self._root
 
     def __check_corpus(self):
-        print(f'ROOT = {self.root}')
         if not os.path.isdir(self.root):
             if self.root != os.path.join(
                     get_cltk_data_dir(),

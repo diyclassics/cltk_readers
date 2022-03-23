@@ -252,7 +252,7 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
             fileids = self.fileids()
 
         #TODO: Shouldn't self.fileids() handle str/lst    
-        if isstring(fileids):
+        if isinstance(fileids, str):
             record = self.metadata_.get(fileids, None)
             if record:
                 return record.get(label, None)
