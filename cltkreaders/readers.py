@@ -7,6 +7,9 @@ __author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
 __license__ = "MIT License."
 
 import os
+import glob
+import json
+from collections import defaultdict 
 import warnings
 import codecs
 import unicodedata
@@ -78,7 +81,18 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
                 self.word_tokenizer = LatinWordTokenizer()
 
         self.normalization_form = normalization_form
+        
         PlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
+
+    @property
+    def metadata_(self):
+        jsonfiles = glob.glob(f'{self.root}/metadata/*.json')
+        jsons = [json.load(open(file)) for file in jsonfiles]
+        merged = defaultdict(dict)
+        for json_ in jsons:
+            for k, v in json_.items():
+                merged[k].update(v)
+        return merged
 
     def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
         """
@@ -229,7 +243,25 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
 
     def license(self):
         with open(f'{self.root}/../LICENSE.md', 'r') as f:
-            return f.read()               
+            return f.read()
+
+    def metadata(self, label, fileids=None):
+        if not label:
+            return None
+        if not fileids:
+            fileids = self.fileids()
+
+        #TODO: Shouldn't self.fileids() handle str/lst    
+        if isinstance(fileids, str):
+            record = self.metadata_.get(fileids, None)
+            if record:
+                return record.get(label, None)
+            else:
+                return None
+        else:
+            records = [self.metadata_.get(fileid, None) for fileid in fileids]
+            label_records = [record.get(label, None) if record else None for record in records]
+            return label_records  
 
     def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
         """

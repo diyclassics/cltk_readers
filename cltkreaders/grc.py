@@ -6,7 +6,6 @@ __license__ = "MIT License."
 
 import os.path
 from typing import Callable, Iterator, Union
-
 from cltkreaders.readers import TesseraeCorpusReader
 
 from cltk import NLP
@@ -39,7 +38,11 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
         """
         self.lang = lang
         self.corpus = "grc_text_tesserae"
-        self._root = root
+
+        if root:
+            self.root = root
+        else:
+            self._root = None
 
         self.__check_corpus()
 
@@ -71,7 +74,6 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
         return self._root
 
     def __check_corpus(self):
-        print(f'ROOT = {self.root}')
         if not os.path.isdir(self.root):
             if self.root != os.path.join(
                     get_cltk_data_dir(),
@@ -102,4 +104,4 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
             pos_sent = []
             for item in data:
                 pos_sent.append(f"{item.string}/{item.upos}")
-            yield pos_sent                                             
+            yield pos_sent
