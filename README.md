@@ -1,7 +1,7 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
-Version 0.2.1; tested on Python 3.9.10, CLTK 1.0.22
+Version 0.2.2; tested on Python 3.9.10, CLTK 1.1.1
 
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
