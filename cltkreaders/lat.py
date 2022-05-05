@@ -107,7 +107,6 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
     def tokenized_paras(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
         # There is no para methods at present in Tess; use texts instead
         # to follow example in Bengfort et al. p. 49
-        # TODO: Add lemmas
         for text in self.texts(fileids):
             tokenized_para = []
             sents = self.sent_tokenizer.tokenize(text)
@@ -115,6 +114,6 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
                 tokenized_sent = []
                 data = self.nlp.analyze(text=sent)
                 for item in data:
-                    tokenized_sent.append((item.string, item.upos))
+                    tokenized_sent.append((item.string, item.lemma, item.upos))
                 tokenized_para.append(tokenized_sent)
             yield tokenized_para
