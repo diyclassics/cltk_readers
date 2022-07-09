@@ -7,7 +7,7 @@ __license__ = "MIT License."
 import os.path
 from typing import Callable, Iterator, Union
 
-from readers import TesseraeCorpusReader, PerseusTreebankCorpusReader
+from cltkreaders.readers import TesseraeCorpusReader, PerseusTreebankCorpusReader
 
 from cltk import NLP
 from cltk.core.data_types import Pipeline
@@ -41,7 +41,7 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
         self.corpus = "lat_text_tesserae"
         self._root = root
 
-        self.check_corpus()
+        self.__check_corpus()
 
         
         pipeline = Pipeline(description="Latin pipeline for Tesserae readers", 
@@ -72,7 +72,7 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
                             f"{self.lang}/text/{self.corpus}/texts")
         return self._root
 
-    def check_corpus(self):
+    def __check_corpus(self):
         if not os.path.isdir(self.root):
             if self.root != os.path.join(
                     get_cltk_data_dir(),
@@ -103,7 +103,21 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
             pos_sent = []
             for item in data:
                 pos_sent.append(f"{item.string}/{item.upos}")
-            yield pos_sent       
+            yield pos_sent
+
+    def tokenized_paras(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        # There is no para methods at present in Tess; use texts instead
+        # to follow example in Bengfort et al. p. 49
+        for text in self.texts(fileids):
+            tokenized_para = []
+            sents = self.sent_tokenizer.tokenize(text)
+            for sent in sents:
+                tokenized_sent = []
+                data = self.nlp.analyze(text=sent)
+                for item in data:
+                    tokenized_sent.append((item.string, item.lemma, item.upos))
+                tokenized_para.append(tokenized_sent)
+            yield tokenized_para
 
 # TODO: Add corpus download support following Tesserae example
 LatinPerseusTreebankCorpusReader = PerseusTreebankCorpusReader

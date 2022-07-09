@@ -7,7 +7,7 @@ __license__ = "MIT License."
 import os.path
 from typing import Callable, Iterator, Union
 
-from readers import TesseraeCorpusReader, PerseusTreebankCorpusReader
+from cltkreaders import TesseraeCorpusReader, PerseusTreebankCorpusReader
 
 from cltk import NLP
 from cltk.core.data_types import Pipeline
@@ -39,9 +39,13 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
         """
         self.lang = lang
         self.corpus = "grc_text_tesserae"
-        self._root = root
 
-        self.check_corpus()
+        if root:
+            self.root = root
+        else:
+            self._root = None
+
+        self.__check_corpus()
 
         pipeline = Pipeline(description="Greek pipeline for Tesserae readers", 
                             processes=[GreekNormalizeProcess, GreekStanzaProcess], 
@@ -70,8 +74,7 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
                             f"{self.lang}/text/{self.corpus}/texts")
         return self._root
 
-    def check_corpus(self):
-        print(f'ROOT = {self.root}')
+    def __check_corpus(self):
         if not os.path.isdir(self.root):
             if self.root != os.path.join(
                     get_cltk_data_dir(),
@@ -102,7 +105,11 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
             pos_sent = []
             for item in data:
                 pos_sent.append(f"{item.string}/{item.upos}")
+<<<<<<< HEAD
             yield pos_sent                                             
 
 # TODO: Add corpus download support following Tesserae example
 GreekPerseusTreebankCorpusReader = PerseusTreebankCorpusReader
+=======
+            yield pos_sent
+>>>>>>> main

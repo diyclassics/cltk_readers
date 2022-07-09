@@ -2,14 +2,14 @@ from setuptools import setup
 
 setup(
     name='cltk_readers',
-    version='0.1.1',
+    version='0.2.2',
     packages=['cltkreaders'],
     url='https://github.com/diyclassics/cltk_readers',
     license='MIT License',
     author='Patrick J. Burns',
     author_email='patrick@diyclassics.org',
     description='Corpus reader extension for the Classical Language Toolkit ',
-    install_requires=['cltk~=1.0.15',
+    install_requires=['cltk~=1.1.1',
                       'pyuca==1.2',
     ],
     classifiers=[
