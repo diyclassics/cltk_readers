@@ -1,7 +1,7 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
-Version 0.2.2; tested on Python 3.9.10, CLTK 1.1.1
+Version 0.2.3; tested on Python 3.9.10, CLTK 1.1.1
 
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
@@ -41,5 +41,9 @@ Version 0.2.2; tested on Python 3.9.10, CLTK 1.1.1
 ## Corpora supported (so far!)
 - [CLTK Tesserae Latin Corpus](https://github.com/cltk/lat_text_tesserae)
 - [CLTK Tesserae Greek Corpus](https://github.com/cltk/grc_text_tesserae)
+- [Perseus Dependency Treebanks (AGLDT)](https://perseusdl.github.io/treebank_data/)
 
-*Coded 2.9.2022 by [Patrick J. Burns](http://github.com/diyclassics)*
+## Change log
+- 0.2.3: Add support for Perseus AGLDT Treebanks
+
+*Coded 2022 by [Patrick J. Burns](http://github.com/diyclassics)*
