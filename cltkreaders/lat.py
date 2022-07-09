@@ -7,7 +7,7 @@ __license__ = "MIT License."
 import os.path
 from typing import Callable, Iterator, Union
 
-from readers import TesseraeCorpusReader
+from readers import TesseraeCorpusReader, PerseusTreebankCorpusReader
 
 from cltk import NLP
 from cltk.core.data_types import Pipeline
@@ -104,3 +104,6 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
             for item in data:
                 pos_sent.append(f"{item.string}/{item.upos}")
             yield pos_sent       
+
+# TODO: Add corpus download support following Tesserae example
+LatinPerseusTreebankCorpusReader = PerseusTreebankCorpusReader

@@ -14,8 +14,12 @@ import re
 from typing import Callable, DefaultDict, Iterator, Union
 from collections import defaultdict
 
+import xml.etree.ElementTree as ET
+from lxml import etree
+
 from nltk import FreqDist
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
+from nltk.corpus.reader.xmldocs import XMLCorpusReader
 
 from cltk.sentence.lat import LatinPunktSentenceTokenizer
 from cltk.tokenizers.lat.lat import LatinWordTokenizer
@@ -262,3 +266,96 @@ class TesseraeCorpusReader(PlaintextCorpusReader):
             'lexdiv': float(counts['words']) / float(len(tokens)),
             'secs': time.time() - started,
         }
+
+
+class TEICorpusReader(XMLCorpusReader):
+    """
+    A corpus reader for working TEI/XML docs
+    """
+
+    def __init__(self, root, fileids: str = r'.*\.xml', encoding='utf8', **kwargs):
+        """
+        """
+        XMLCorpusReader.__init__(self, root, fileids)
+        self.ns = {'tei': 'http://www.tei-c.org/ns/1.0'}
+
+    def docs(self,  fileids: Union[str, list] = None):
+        """
+        Returns the complete text of a .xml file, closing the document after
+        we are done reading it and yielding it in a memory-safe fashion.
+        """
+
+        # Create a generator, loading one document into memory at a time.
+        for path, encoding in self.abspaths(fileids, include_encoding=True):
+            with codecs.open(path, 'r', encoding=encoding) as f:
+                doc = f.read()
+                if doc:
+                    x = etree.fromstring(bytes(doc, encoding='utf-8'), parser=etree.XMLParser(huge_tree=True))
+                    yield etree.tostring(x, pretty_print=True, encoding=str)
+
+    def bodies(self, fileids: Union[str, list] = None):
+        for doc in self.docs(fileids):
+            root = ET.fromstring(doc)
+            body = root.find(f'.//tei:body', self.ns)
+            yield body
+
+
+class PerseusTreebankCorpusReader(TEICorpusReader):
+    """
+    A corpus reader for working with Perseus Treebank (AGLDT) files, v.2.1; files can be found
+    here: https://github.com/PerseusDL/treebank_data/tree/master/v2.1
+
+    NB: `root` should point to a directory containing the AGLDT files
+    """
+
+    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', **kwargs):
+        TEICorpusReader.__init__(self, root, fileids, encoding=encoding)
+
+    def bodies(self, fileids: Union[str, list] = None):
+        for doc in self.docs(fileids):
+            root = ET.fromstring(doc)
+            body = root.find(f'.//body')
+            yield body
+
+    def paras(self, fileids: Union[str, list] = None):
+        for body in self.bodies(fileids):
+            paras = body.findall('.//p')
+            # If no paras available, return entire body as a 'para'
+            if not paras:
+                paras = [body]
+            for para in paras:
+                yield para           
+
+    def sents(self, fileids: Union[str, list] = None, plaintext: bool = False):
+        for para in self.paras(fileids):
+            sents = para.findall('.//sentence')
+            for sent in sents:
+                if plaintext:
+                    sent = ' '.join([word.get('form', '') for word in sent.findall('.//word')])
+                    sent = re.sub(r'\[\d+\]', '', sent) # Clean up 'insertion' tokens
+                yield sent
+
+    def word_data(self, fileids: Union[str, list] = None):
+        for sent in self.sents(fileids):
+            words = sent.findall('.//word')
+            for word in words:
+                yield word
+
+    def words(self, fileids: Union[str, list] = None):
+        for word in self.word_data(fileids):
+            yield word.get('form', None)
+    
+    def tokenized_sents(self, fileids=None, simple_pos: bool = True):
+        for para in self.paras(fileids):
+            sents = para.findall('.//sentence')
+            for sent in sents:
+                tokenized_sent = []
+                words = sent.findall('.//word')
+                for word in words:
+                    token = word.get('form', None)
+                    lemma = word.get('lemma', None)
+                    postag = word.get('postag', None)
+                    if simple_pos and postag:
+                        postag = postag[0].upper() # TODO: Write tag map?
+                    tokenized_sent.append((token, lemma, postag))
+                yield tokenized_sent
