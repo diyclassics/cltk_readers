@@ -7,17 +7,24 @@ __author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
 __license__ = "MIT License."
 
 import os
+import os.path
+import glob
+import json
+from collections import defaultdict 
 import warnings
 import codecs
 import unicodedata
 import time
 import re
 from typing import Callable, DefaultDict, Iterator, Union
-from collections import defaultdict
+
+import xml.etree.ElementTree as ET
+from lxml import etree
 
 from nltk import FreqDist
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
+from nltk.corpus.reader.xmldocs import XMLCorpusReader
 
 from cltk.sentence.lat import LatinPunktSentenceTokenizer
 from cltk.tokenizers.lat.lat import LatinWordTokenizer
@@ -74,6 +81,34 @@ class CLTKCorpusReaderMixin():
             'secs': time.time() - started,
         }
 
+    def citation(self):
+        citations = glob.glob(f'{self.root}/**/citation.bib', recursive=True)
+        # citations += glob.glob(f'{self.root}/**/CITATION.bib', recursive=True)
+
+        citation_full = []
+
+        for citation in citations:
+            citation_header = f'Citation for files in folder {os.path.dirname(citation)}'
+            with open(citation, 'r') as f:
+                citation_text = f.read()
+                citation_full.append(f'{citation_header}\n\n{citation_text}')
+        
+        return '\n\n'.join(citation_full)
+
+    def license(self):
+        licenses = [file for file in glob.glob(f'{self.root}/**/*.*',recursive=True) if 'license.txt' in file.lower() or 'license.md' in file.lower()] 
+        
+        license_full = []
+
+        for license in licenses:
+            license_header = f'License for files in folder {os.path.dirname(license)}'
+            with open(license, 'r') as f:
+                license_text = f.read()
+                license_full.append(f'{license_header}\n\n{license_text}')
+        
+        return '\n\n'.join(license_full)
+
+
 class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
     """
     Generic corpus reader for texts from the Tesserae-CLTK corpus
@@ -125,7 +160,18 @@ class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
                 self.word_tokenizer = LatinWordTokenizer()
 
         self.normalization_form = normalization_form
+        
         PlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
+
+    @property
+    def metadata_(self):
+        jsonfiles = glob.glob(f'{self.root}/metadata/*.json')
+        jsons = [json.load(open(file)) for file in jsonfiles]
+        merged = defaultdict(dict)
+        for json_ in jsons:
+            for k, v in json_.items():
+                merged[k].update(v)
+        return merged
 
     def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
         """
@@ -165,10 +211,13 @@ class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
 
             lines = [line for line in doc.split('\n') if line]
             for line in lines:
-                k, v = line.split('>', 1)
-                k = f'{k}>'
-                v = v.strip()
-                rows.append((k, v))
+                try:
+                    k, v = line.split('>', 1)
+                    k = f'{k}>'
+                    v = v.strip()
+                    rows.append((k, v))
+                except:
+                    print(f'The following line is not formatted corrected and has been skipped: {line}\n')
             yield dict(rows)
 
     def texts(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[str]:
@@ -266,6 +315,100 @@ class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
         else:
             for doc_rows in self.doc_rows(fileids):
                 yield dict(build_concordance(doc_rows))
+                
+
+class TEICorpusReader(XMLCorpusReader):
+    """
+    A corpus reader for working TEI/XML docs
+    """
+
+    def __init__(self, root, fileids: str = r'.*\.xml', encoding='utf8', **kwargs):
+        """
+        """
+        XMLCorpusReader.__init__(self, root, fileids)
+        self.ns = {'tei': 'http://www.tei-c.org/ns/1.0'}
+
+    def docs(self,  fileids: Union[str, list] = None):
+        """
+        Returns the complete text of a .xml file, closing the document after
+        we are done reading it and yielding it in a memory-safe fashion.
+        """
+
+        # Create a generator, loading one document into memory at a time.
+        for path, encoding in self.abspaths(fileids, include_encoding=True):
+            with codecs.open(path, 'r', encoding=encoding) as f:
+                doc = f.read()
+                if doc:
+                    x = etree.fromstring(bytes(doc, encoding='utf-8'), parser=etree.XMLParser(huge_tree=True))
+                    yield etree.tostring(x, pretty_print=True, encoding=str)
+
+    def bodies(self, fileids: Union[str, list] = None):
+        for doc in self.docs(fileids):
+            root = ET.fromstring(doc)
+            body = root.find(f'.//tei:body', self.ns)
+            yield body
+
+
+class PerseusTreebankCorpusReader(TEICorpusReader):
+    """
+    A corpus reader for working with Perseus Treebank (AGLDT) files, v.2.1; files can be found
+    here: https://github.com/PerseusDL/treebank_data/tree/master/v2.1
+
+    NB: `root` should point to a directory containing the AGLDT files
+    """
+
+    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', **kwargs):
+        TEICorpusReader.__init__(self, root, fileids, encoding=encoding)
+
+    def bodies(self, fileids: Union[str, list] = None):
+        for doc in self.docs(fileids):
+            root = ET.fromstring(doc)
+            body = root.find(f'.//body')
+            yield body
+
+    def paras(self, fileids: Union[str, list] = None):
+        for body in self.bodies(fileids):
+            paras = body.findall('.//p')
+            # If no paras available, return entire body as a 'para'
+            if not paras:
+                paras = [body]
+            for para in paras:
+                yield para           
+
+    def sents(self, fileids: Union[str, list] = None, plaintext: bool = False):
+        for para in self.paras(fileids):
+            sents = para.findall('.//sentence')
+            for sent in sents:
+                if plaintext:
+                    sent = ' '.join([word.get('form', '') for word in sent.findall('.//word')])
+                    sent = re.sub(r'\[\d+\]', '', sent) # Clean up 'insertion' tokens
+                yield sent
+
+    def word_data(self, fileids: Union[str, list] = None):
+        for sent in self.sents(fileids):
+            words = sent.findall('.//word')
+            for word in words:
+                yield word
+
+    def words(self, fileids: Union[str, list] = None):
+        for word in self.word_data(fileids):
+            yield word.get('form', None)
+    
+    def tokenized_sents(self, fileids=None, simple_pos: bool = True):
+        for para in self.paras(fileids):
+            sents = para.findall('.//sentence')
+            for sent in sents:
+                tokenized_sent = []
+                words = sent.findall('.//word')
+                for word in words:
+                    token = word.get('form', None)
+                    lemma = word.get('lemma', None)
+                    postag = word.get('postag', None)
+                    if simple_pos and postag:
+                        postag = postag[0].upper() # TODO: Write tag map?
+                    tokenized_sent.append((token, lemma, postag))
+                yield tokenized_sent                
+
 
 class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
     """
@@ -408,3 +551,24 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
             pos_sent = zip(tokenized_sent, pos_sent)
             pos_sent = [f"{item[0]}/{item[1]}" for item in pos_sent if item[0]]
             yield pos_sent
+
+    def annotated_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        """
+        """
+        for sent in self.sent_dicts(fileids):
+            token_sent = [item['FORM'] for item in sent]
+            lemma_sent = [item['LEMMA'] for item in sent]
+            pos_sent = [item['UPOS'] for item in sent]
+            
+            if preprocess:
+                token_sent = [preprocess(token) for token in token_sent]
+                lemma_sent = [preprocess(lemma) for lemma in lemma_sent]
+
+            annotated_sent = list(zip(token_sent, lemma_sent, pos_sent))
+            yield annotated_sent
+
+
+if __name__ == '__main__':
+    root = '/Users/diyclassics_2/cltk_data/lat/text/lat_text_tesserae'
+    CR = UDCorpusReader(root)
+    print(CR.license())
