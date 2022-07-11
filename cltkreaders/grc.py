@@ -105,11 +105,7 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
             pos_sent = []
             for item in data:
                 pos_sent.append(f"{item.string}/{item.upos}")
-<<<<<<< HEAD
             yield pos_sent                                             
 
 # TODO: Add corpus download support following Tesserae example
 GreekPerseusTreebankCorpusReader = PerseusTreebankCorpusReader
-=======
-            yield pos_sent
->>>>>>> main
