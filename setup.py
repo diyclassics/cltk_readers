@@ -10,6 +10,7 @@ setup(
     author_email='patrick@diyclassics.org',
     description='Corpus reader extension for the Classical Language Toolkit ',
     install_requires=['cltk~=1.1.1',
+                      'lxml==4.7.1', 
                       'pyuca==1.2',
     ],
     classifiers=[
