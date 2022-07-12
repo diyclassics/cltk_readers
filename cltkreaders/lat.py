@@ -92,6 +92,7 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
                     fetch_corpus.import_corpus(
                         corpus_name=self.corpus
                     )
+                    fetch_corpus.import_corpus(corpus_name=f'{self.lang}_models_cltk')
                 else:
                     raise CLTKException(
                         f"Failed to instantiate LatinTesseraeCorpusReader. Rerun with 'root' parameter set to folder with .tess files or download the corpus to the CLTK_DATA folder."
