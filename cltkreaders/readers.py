@@ -192,6 +192,7 @@ class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
 
         self.normalization_form = normalization_form
         
+        self._metadata = self.load_metadata()
         PlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
 
     def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
