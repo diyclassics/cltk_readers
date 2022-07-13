@@ -34,8 +34,39 @@ from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
 from pyuca import Collator
 c = Collator()
 
-
 class CLTKCorpusReaderMixin():
+    def load_metadata(self):
+        jsonfiles = glob.glob(f'{self.root}/**/metadata/*.json', recursive=True)
+        jsons = [json.load(open(file)) for file in jsonfiles]
+        merged = defaultdict(dict)
+        for json_ in jsons:
+            for k, v in json_.items():
+                merged[k].update(v)
+        return merged
+
+    def metadata(self, label: str, fileids: Union[str, list] = None):
+        if not label:
+            return None
+        # if not fileids:
+        #     fileids = self.fileids()
+
+        if isinstance(fileids, np.ndarray) and not fileids.size:
+            fileids = self.fileids()
+        elif isinstance(fileids, (list)) and not fileids:
+            fileids = self.fileids()            
+
+        #TODO: Shouldn't self.fileids() handle str/lst    
+        if isinstance(fileids, str):
+            record = self._metadata.get(fileids, None)
+            if record:
+                return record.get(label, None)
+            else:
+                return None
+        else:
+            records = [self._metadata.get(fileid, None) for fileid in fileids]
+            label_records = [record.get(label, None) if record else None for record in records]
+            return label_records     
+    
     def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
         """
         :param fileids: Subset of files to be processed by reader tasks
@@ -162,16 +193,6 @@ class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
         self.normalization_form = normalization_form
         
         PlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
-
-    @property
-    def metadata_(self):
-        jsonfiles = glob.glob(f'{self.root}/metadata/*.json')
-        jsons = [json.load(open(file)) for file in jsonfiles]
-        merged = defaultdict(dict)
-        for json_ in jsons:
-            for k, v in json_.items():
-                merged[k].update(v)
-        return merged
 
     def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
         """
@@ -566,9 +587,3 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
 
             annotated_sent = list(zip(token_sent, lemma_sent, pos_sent))
             yield annotated_sent
-
-
-if __name__ == '__main__':
-    root = '/Users/diyclassics_2/cltk_data/lat/text/lat_text_tesserae'
-    CR = UDCorpusReader(root)
-    print(CR.citation())
