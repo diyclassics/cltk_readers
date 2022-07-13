@@ -42,6 +42,7 @@ Version 0.2.4; tested on Python 3.9.10, CLTK 1.1.1
 - [CLTK Tesserae Latin Corpus](https://github.com/cltk/lat_text_tesserae)
 - [CLTK Tesserae Greek Corpus](https://github.com/cltk/grc_text_tesserae)
 - [Perseus Dependency Treebanks (AGLDT)](https://perseusdl.github.io/treebank_data/)
+- [Universal Dependency treebanks (UD)](https://universaldependencies.org/)
 
 ## Change log
 - 0.2.4: Add support for Universal Dependencies files
