@@ -571,4 +571,4 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
 if __name__ == '__main__':
     root = '/Users/diyclassics_2/cltk_data/lat/text/lat_text_tesserae'
     CR = UDCorpusReader(root)
-    print(CR.license())
+    print(CR.citation())
