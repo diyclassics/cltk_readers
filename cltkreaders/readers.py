@@ -36,10 +36,11 @@ from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
 from pyuca import Collator
 c = Collator()
 
+
 class CLTKCorpusReaderMixin():
 
     def load_metadata(self):
-        jsonfiles = glob.glob(f'{self.root}/**/metadata/*.json', recursive=True)
+        jsonfiles = glob.glob(os.path.join(self.root, "**", "metadata", "*.json"), recursive=True)
         jsons = [json.load(open(file)) for file in jsonfiles]
         merged = defaultdict(dict)
         for json_ in jsons:
@@ -58,7 +59,7 @@ class CLTKCorpusReaderMixin():
         elif isinstance(fileids, (list)) and not fileids:
             fileids = self.fileids()            
 
-        #TODO: Shouldn't self.fileids() handle str/lst    
+        # TODO: Shouldn't self.fileids() handle str/lst
         if isinstance(fileids, str):
             record = self._metadata.get(fileids, None)
             if record:
@@ -116,7 +117,7 @@ class CLTKCorpusReaderMixin():
         }
 
     def citation(self):
-        citations = glob.glob(f'{self.root}/**/citation.bib', recursive=True)
+        citations = glob.glob(os.path.join(self.root, "**", "citation.bib"), recursive=True)
         # citations += glob.glob(f'{self.root}/**/CITATION.bib', recursive=True)
 
         citation_full = []
@@ -130,7 +131,7 @@ class CLTKCorpusReaderMixin():
         return '\n\n'.join(citation_full)
 
     def license(self):
-        licenses = [file for file in glob.glob(f'{self.root}/**/*.*',recursive=True) if 'license.txt' in file.lower() or 'license.md' in file.lower()] 
+        licenses = [file for file in glob.glob(os.path.join(self.root, "**", "*.*"),recursive=True) if 'license.txt' in file.lower() or 'license.md' in file.lower()]
         
         license_full = []
 
@@ -146,14 +147,14 @@ class CLTKPlaintextCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
     """
     Generic corpus reader for plaintext texts
     """
-    def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8', 
+    def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8',
                  normalization_form: str = 'NFC', **kwargs):
-        self._root = root                 
+        self._root = root
         self.normalization_form = normalization_form
         self._metadata = self.load_metadata()
         PlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
 
-    def docs(self, fileids: Union[list, str] = None) -> Iterator[str]: 
+    def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
         """
         :param fileids: Subset of files to be processed by reader tasks
         :yield: Plaintext content of file
@@ -177,7 +178,7 @@ class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
     """
 
     def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8', lang: str = None,
-                 
+
                  word_tokenizer: Callable = None, sent_tokenizer: Callable = None, **kwargs):
         """
         :param root: Location of plaintext files to be read into corpus reader
@@ -266,7 +267,7 @@ class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
 
     def paras(self, fileids: Union[list, str] = None, preprocess: Callable = None, para_threshold: int = 75):
         """
-        Tesserae documents (at present) are not marked up to include paragraph divisions; accordingly, 
+        Tesserae documents (at present) are not marked up to include paragraph divisions; accordingly,
         paras are set as equal to `texts` if avg doc_row value len >= para_threshold (assumed to be
         poetry) or otherwise split by doc_row value, i.e. prose section
 
@@ -437,7 +438,7 @@ class PerseusTreebankCorpusReader(TEICorpusReader):
                     lemma = word.get('lemma', None)
                     postag = word.get('postag', None)
                     if simple_pos and postag:
-                        postag = postag[0].upper() # TODO: Write tag map?
+                        postag = postag[0].upper()  # TODO: Write tag map?
                     tokenized_sent.append((token, lemma, postag))
                 yield tokenized_sent                
 
@@ -447,7 +448,7 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
     Generic corpus reader for texts from the UD treebanks
     """
     def __init__(self, root: str, fileids: str = r'.*\.conllu', 
-                 columns: list = ['ID', 'FORM', 'LEMMA', 'UPOS', 'XPOS', 'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC'], 
+                 columns: list = None,
                  encoding: str = 'utf-8', lang: str = None, normalization_form: str = 'NFC', **kwargs):
         """
         :param root: Location of conllu files to be read into corpus reader
@@ -459,7 +460,10 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
         """
         if lang:
             self.lang = lang.lower()
-        self.columns = columns
+        if not columns:
+            self.columns = ['ID', 'FORM', 'LEMMA', 'UPOS', 'XPOS', 'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC']
+        else:
+            self.columns = columns
         self.normalization_form = normalization_form
         CorpusReader.__init__(self, root, fileids, encoding)
 
@@ -623,23 +627,23 @@ class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
 
         for doc in self.docs(fileids):
             root = etree.fromstring(doc)
-            
+
             # Remove `note` elements; see above
-            notes = root.iterfind('.//note')           
+            notes = root.iterfind('.//note')
             if notes:
-                for note in notes: 
+                for note in notes:
                     note.getparent().remove(note)
-            
+
             body = root.find(f'.//body')
             yield body
 
     def paras(self, fileids: Union[str, list] = None):
         for body in self.bodies(fileids):
             paras = body.findall('.//p')
-            
+
             # If no paras available, return entire body as a 'para'
             if not paras:
                 paras = [body]
-            
+
             for para in paras:
-                yield ' '.join(para.itertext())                   
+                yield ' '.join(para.itertext())
