@@ -34,11 +34,13 @@ from cltk.sentence.grc import GreekRegexSentenceTokenizer
 from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
 
 from pyuca import Collator
+
+from cltkreaders.formats.cora import CORAShiftTags, CORALayoutInfo, CORAToken
+
 c = Collator()
 
 
-class CLTKCorpusReaderMixin():
-
+class CLTKCorpusReaderMixin:
     def load_metadata(self):
         jsonfiles = glob.glob(os.path.join(self.root, "**", "metadata", "*.json"), recursive=True)
         jsons = [json.load(open(file)) for file in jsonfiles]
@@ -604,6 +606,8 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
             yield annotated_sent
 
 
+
+
 class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
     """
     A corpus reader for working Perseus XML files, inc.
@@ -647,3 +651,43 @@ class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
 
             for para in paras:
                 yield ' '.join(para.itertext())
+
+
+class CORAReader:
+    def __init__(self, tree):
+        self.tree = tree
+        self.root = tree.getroot()
+
+    @property
+    def id(self):
+        return self.tree.getroot().get("id", 0)
+
+    @property
+    def cora_headers(self):
+        header_node = [child for child in self.root.getchildren() if child.tag == "header"]
+        if header_node:
+            header = header_node[0]
+            return {n.tag: n.text for n in header.getchildren()}
+        return None
+
+    @property
+    def layout_info(self):
+        layout_info_node = [child for child in self.root.getchildren() if child.tag == "layoutinfo"]
+        if layout_info_node:
+            layout_info = layout_info_node[0]
+            return [CORALayoutInfo.scan(n) for n in layout_info.getchildren()]
+        return None
+
+    @property
+    def shift_tags(self):
+        shift_tags_node = [child for child in self.root.getchildren() if child.tag == "shifttags"]
+        if shift_tags_node:
+            shift_tags = shift_tags_node[0]
+            return [CORAShiftTags.scan(n) for n in shift_tags.getchildren()]
+        return None
+
+    @property
+    def tokens(self):
+        tokens = [CORAToken(child) for child in self.root.getchildren() if child.tag == "token"]
+        return tokens
+

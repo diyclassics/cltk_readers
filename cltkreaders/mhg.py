@@ -7,7 +7,8 @@ from cltk.utils import get_cltk_data_dir
 from lxml import etree
 from requests import get
 
-from cltkreaders.readers import XMLCorpusReader
+from cltkreaders.readers import XMLCorpusReader, CORAReader
+from cltkreaders.utils import create_default_license_file
 
 
 class ReferenzkorpusMhdReader(XMLCorpusReader):
@@ -19,13 +20,11 @@ class ReferenzkorpusMhdReader(XMLCorpusReader):
         self.filename = "rem-corralled-20161222.tar.xz"
         self.lang = "mhg"
         self.corpus = "rem"
-        self.corpus_path = os.path.join(
-            get_cltk_data_dir(),
-            f"{self.lang}", "text", f"{self.corpus}", "texts")
-        if not os.path.exists(os.path.join(self.corpus_path, "LICENSE")):
-            with open(os.path.join(self.corpus_path, "LICENSE"), "w") as f:
-                f.write("")
-        XMLCorpusReader.__init__(self, root, fileids)
+        self.corpus_path = os.path.join(get_cltk_data_dir(), f"{self.lang}", "text", f"{self.corpus}", "texts")
+
+        create_default_license_file(self.corpus_path)
+
+        super().__init__(root, fileids, wrap_etree)
 
     def _download(self):
         """
@@ -44,9 +43,6 @@ class ReferenzkorpusMhdReader(XMLCorpusReader):
                         f.write(chunk)
             with tarfile.open(os.path.join(self.corpus_path, self.filename)) as f:
                 f.extractall(self.corpus_path)
-        if not os.path.exists(os.path.join(self.corpus_path, "LICENSE")):
-            with open(os.path.join(self.corpus_path, "LICENSE"), "r") as f:
-                f.write("")
 
     def docs(self,  fileids: Union[str, list] = None):
         """
@@ -55,10 +51,32 @@ class ReferenzkorpusMhdReader(XMLCorpusReader):
         'rem'
         >>> em_reader.license()
         ''
-        >>> em_reader.fileids()
-        >>> doc = em_reader.docs('rem-corralled-20161222/M001-N1.xml')
-        >>> print([i for i in doc][0])
+        >>> file_ids = em_reader.fileids()
+        >>> file_ids[0]
+        'M001-N1.xml'
+        >>> doc = em_reader.docs('M001-N1.xml')
+        >>> docs = [i for i in doc]
+        >>> print(docs[0])
 
+        >>> doc1 = docs[0]
+        >>> tree = em_reader.doc("M321-G1.xml")
+        >>> root = tree.tree.getroot()
+        >>> help(root)
+        >>> root.items()
+        [('id', 'M321-G1')]
+        >>> root.getchildren()
+
+        >>> tree.cora_headers
+
+
+        >>> tree.layout_info
+
+        >>> tree.shift_tags
+
+        >>> t = tree.tokens[2]
+        >>> node = t.tok_anno.node
+        >>> [n.tag for n in node.getchildren()]
+        >>> t.tok_anno.to_dict()
 
 
         Returns the complete text of a .xml file, closing the document after
@@ -66,15 +84,25 @@ class ReferenzkorpusMhdReader(XMLCorpusReader):
         """
 
         # Create a generator, loading one document into memory at a time.
+        for tree in self.docs_tree(fileids):
+            yield etree.tostring(tree, pretty_print=True, encoding=str)
+
+    def docs_tree(self, fileids):
         for path, encoding in self.abspaths(fileids, include_encoding=True):
             with codecs.open(path, 'r', encoding=encoding) as f:
                 doc = f.read()
                 if doc:
-                    x = etree.fromstring(bytes(doc, encoding='utf-8'), parser=etree.XMLParser(huge_tree=True))
-                    yield etree.tostring(x, pretty_print=True, encoding=str)
+                    yield etree.fromstring(bytes(doc, encoding='utf-8'), parser=etree.XMLParser(huge_tree=True))
 
-    def test_get(self):
-        """
-        >>>
-        """
-        pass
+    def doc(self, file_id: str):
+        for path, encoding in self.abspaths(file_id, include_encoding=True):
+            tree = etree.parse(path, parser=etree.XMLParser(huge_tree=True))
+            return CORAReader(tree)
+        return None
+        # for i in self.docs_tree(file_id):
+        #     return i
+
+        # parser = etree.XMLParser(huge_tree=True)
+        # tree = etree.parse(os.path.join(file_id), parser=parser)
+        # return tree.getroot()
+
