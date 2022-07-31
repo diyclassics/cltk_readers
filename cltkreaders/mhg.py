@@ -32,17 +32,24 @@ class ReferenzkorpusMhdReader(XMLCorpusReader):
         >>> rem_reader._download()
 
         """
+        full_path = os.path.join(self.corpus_path, self.filename)
 
         if not os.path.exists(self.corpus_path):
             os.makedirs(self.corpus_path)
-        if not os.path.exists(os.path.join(self.corpus_path, self.filename)):
+
+        if not os.path.exists(full_path):
             with get("https://zenodo.org/record/3624693/files/rem-corralled-20161222.tar.xz?download=1", stream=True) as g:
                 g.raise_for_status()
-                with open(os.path.join(self.corpus_path, self.filename), "wb") as f:
+                with open(full_path, "wb") as f:
                     for chunk in g.iter_content(chunk_size=8192):
                         f.write(chunk)
-            with tarfile.open(os.path.join(self.corpus_path, self.filename)) as f:
+            with tarfile.open(full_path) as f:
                 f.extractall(self.corpus_path)
+            corpus_directory = os.path.join(self.corpus_path, "rem-corralled-20161222")
+            for filename in os.listdir(corpus_directory):
+                os.rename(os.path.join(corpus_directory, filename), os.path.join(self.corpus_path, filename))
+            # if os.path.exists(corpus_directory):
+            #     os.remove(corpus_directory)
 
     def docs(self,  fileids: Union[str, list] = None):
         """
