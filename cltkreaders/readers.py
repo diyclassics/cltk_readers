@@ -678,16 +678,4 @@ class CORAReader:
             return [CORALayoutInfo.scan(n) for n in layout_info.getchildren()]
         return None
 
-    @property
-    def shift_tags(self):
-        shift_tags_node = [child for child in self.root.getchildren() if child.tag == "shifttags"]
-        if shift_tags_node:
-            shift_tags = shift_tags_node[0]
-            return [CORAShiftTags.scan(n) for n in shift_tags.getchildren()]
-        return None
-
-    @property
-    def tokens(self):
-        tokens = [CORAToken(child) for child in self.root.getchildren() if child.tag == "token"]
-        return tokens
 

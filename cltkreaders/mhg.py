@@ -1,13 +1,18 @@
+"""
+
+"""
+
 import codecs
 import os
 import tarfile
-from typing import Union
+from typing import Union, Callable, Iterator
 
 from cltk.utils import get_cltk_data_dir
 from lxml import etree
 from requests import get
 
-from cltkreaders.readers import XMLCorpusReader, CORAReader
+from cltkreaders.formats.cora import CORAReader
+from cltkreaders.readers import XMLCorpusReader
 from cltkreaders.utils import create_default_license_file
 
 
@@ -23,6 +28,8 @@ class ReferenzkorpusMhdReader(XMLCorpusReader):
         self.corpus_path = os.path.join(get_cltk_data_dir(), f"{self.lang}", "text", f"{self.corpus}", "texts")
 
         create_default_license_file(self.corpus_path)
+
+        self._download()
 
         super().__init__(root, fileids, wrap_etree)
 
@@ -61,29 +68,47 @@ class ReferenzkorpusMhdReader(XMLCorpusReader):
         >>> file_ids = em_reader.fileids()
         >>> file_ids[0]
         'M001-N1.xml'
-        >>> doc = em_reader.docs('M001-N1.xml')
-        >>> docs = [i for i in doc]
-        >>> print(docs[0])
 
-        >>> doc1 = docs[0]
-        >>> tree = em_reader.doc("M321-G1.xml")
-        >>> root = tree.tree.getroot()
-        >>> help(root)
-        >>> root.items()
-        [('id', 'M321-G1')]
-        >>> root.getchildren()
+        # >>> doc = em_reader.docs('M001-N1.xml')
+        # >>> docs = [i for i in doc]
+        #
+        # # >>> print(docs[0])
+        #
+        # >>> doc1 = docs[0]
+        # >>> tree = em_reader.doc("M321-G1.xml")
+        # # >>> root = tree.tree.getroot()
+        # # >>> help(root)
+        # # >>> root.items()
+        # # [('id', 'M321-G1')]
+        # # >>> root.getchildren()
+        # #
+        # # >>> tree.cora_headers
+        # #
+        # #
+        # # >>> tree.layout_info
+        # #
+        # # >>> tree.shift_tags
+        # #
+        # # >>> t = tree.tokens[0]
+        # # >>> node = t.tok_anno.node
+        # # >>> node.getchildren()
+        # #
+        # # >>> [n.tag for n in node.getchildren()]
+        # #
+        # # >>> {n.tag: n.items() for n in node.getchildren()}
+        # #
+        # # >>> t.tok_anno.to_dict()
+        # #
+        # >>> [w for w in em_reader.words("M321-G1.xml")][:15]
 
-        >>> tree.cora_headers
+        # >>> [w for w in em_reader.sents("M321-G1.xml")][:10]
 
+        # >>> [w for w in em_reader.sents("M321-G1.xml", normalized=False)][:10]
 
-        >>> tree.layout_info
-
-        >>> tree.shift_tags
-
-        >>> t = tree.tokens[2]
-        >>> node = t.tok_anno.node
-        >>> [n.tag for n in node.getchildren()]
-        >>> t.tok_anno.to_dict()
+        >>> for i, l in enumerate(em_reader.lines("M321-G1.xml", normalized=False)):
+        ...    print([w.tok_anno for w in l])
+        ...    if i > 10:
+        ...        break
 
 
         Returns the complete text of a .xml file, closing the document after
@@ -95,11 +120,13 @@ class ReferenzkorpusMhdReader(XMLCorpusReader):
             yield etree.tostring(tree, pretty_print=True, encoding=str)
 
     def docs_tree(self, fileids):
+        parser = etree.XMLParser(huge_tree=True)
         for path, encoding in self.abspaths(fileids, include_encoding=True):
             with codecs.open(path, 'r', encoding=encoding) as f:
-                doc = f.read()
-                if doc:
-                    yield etree.fromstring(bytes(doc, encoding='utf-8'), parser=etree.XMLParser(huge_tree=True))
+                # doc = f.read()
+                # if doc:
+                yield etree.parse(f, parser=parser)
+                # yield etree.fromstring(bytes(doc, encoding='utf-8'), parser=parser)
 
     def doc(self, file_id: str):
         for path, encoding in self.abspaths(file_id, include_encoding=True):
@@ -112,4 +139,23 @@ class ReferenzkorpusMhdReader(XMLCorpusReader):
         # parser = etree.XMLParser(huge_tree=True)
         # tree = etree.parse(os.path.join(file_id), parser=parser)
         # return tree.getroot()
+
+    def words(self, fileids: Union[list, str] = None, preprocess: Callable = None, normalized=True) -> Iterator[str]:
+        for doc in self.docs_tree(fileids):
+            for word in CORAReader(doc).words(normalized=normalized):
+                if preprocess:
+                    yield preprocess(word)
+                else:
+                    yield word
+
+    def sents(self, fileids: Union[list, str] = None, normalized=True) -> Iterator[str]:
+        for doc in self.docs_tree(fileids):
+            for sent in CORAReader(doc).sents(normalized=normalized):
+                yield sent
+
+    def lines(self, fileids: Union[list, str] = None, normalized=True) -> Iterator[str]:
+        for doc in self.docs_tree(fileids):
+            for line in CORAReader(doc).lines():
+                yield line
+
 
