@@ -35,7 +35,10 @@ class spacy_segmenter():
 class spacy_tokenizer():
     def __init__(self):
         pass
+
     def tokenize(self, doc):
+        if isinstance(doc, str):
+            doc = nlp(doc)
         return [token for token in doc]
 
 class spacy_lemmatizer():
@@ -50,6 +53,17 @@ class spacy_pos_tagger():
     def tag(self, doc):
         return [token.pos_ for token in doc]
 
+class cltk_pos_tagger():
+    def __init__(self, lang):
+        self.lang = lang
+    def tag(self, doc):
+        pipeline = Pipeline(description="Latin pipeline for CLTK readers", 
+                                processes=[LatinNormalizeProcess, LatinStanzaProcess], 
+                                language=get_lang(self.lang))
+            
+        cltk_nlp = NLP(language=self.lang, custom_pipeline=pipeline, suppress_banner=True)
+        doc = cltk_nlp(doc)
+        return [token.pos.name for token in doc]
 
 class LatinTesseraeCorpusReader(TesseraeCorpusReader):
     """
@@ -57,8 +71,10 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
     """
 
     def __init__(self, root: str = None, fileids: str = r'.*\.tess', encoding: str = 'utf-8', lang: str = 'lat',
-                 nlp='spacy', normalization_form: str = 'NFC',
-                 word_tokenizer: Callable = None, sent_tokenizer: Callable = None, **kwargs):
+                 nlp: str = 'spacy', normalization_form: str = 'NFC',
+                word_tokenizer: Callable = None, sent_tokenizer: Callable = None, 
+                lemmatizer: Callable = None, pos_tagger: Callable = None,
+                **kwargs):
         """
         :param root: Location of plaintext files to be read into corpus reader
         :param fileids: Pattern for matching files to be read into corpus reader
@@ -81,11 +97,6 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
             self.lemmatizer = spacy_lemmatizer()
             self.pos_tagger = spacy_pos_tagger()
         else:        
-            pipeline = Pipeline(description="Latin pipeline for Tesserae readers", 
-                                processes=[LatinNormalizeProcess, LatinStanzaProcess], 
-                                language=get_lang(self.lang))
-            self.nlp = NLP(language=lang, custom_pipeline=pipeline, suppress_banner=True)
-
             if not word_tokenizer:
                 self.word_tokenizer = LatinWordTokenizer()
             else:
@@ -96,7 +107,16 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
             else:
                 self.sent_tokenizer = sent_tokenizer
 
-        
+            if lemmatizer:
+                self.lemmatizer = lemmatizer
+            else:
+                self.lemmatizer = LatinBackoffLemmatizer()                    
+
+            if pos_tagger:
+                self.pos_tagger = pos_tagger
+            else:
+                self.pos_tagger = cltk_pos_tagger(lang=self.lang)                  
+
         TesseraeCorpusReader.__init__(self, self.root, fileids, encoding, self.lang,
                                       word_tokenizer=self.word_tokenizer,
                                       sent_tokenizer=self.sent_tokenizer)
@@ -135,27 +155,56 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
                         f"Failed to instantiate LatinTesseraeCorpusReader. Rerun with 'root' parameter set to folder with .tess files or download the corpus to the CLTK_DATA folder."
                     )        
 
-    def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
-        for sent in self.sents(fileids):
-            data = self.nlp.analyze(text=sent)
-            pos_sent = []
-            for item in data:
-                pos_sent.append(f"{item.string}/{item.upos}")
-            yield pos_sent
-
-    def tokenized_paras(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
-        # There is no para methods at present in Tess; use texts instead
-        # to follow example in Bengfort et al. p. 49
+    def sents(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
         for text in self.texts(fileids):
-            tokenized_para = []
+            if unline:
+                text = ' '.join(text.split()).strip()
             sents = self.sent_tokenizer.tokenize(text)
             for sent in sents:
-                tokenized_sent = []
-                data = self.nlp.analyze(text=sent)
-                for item in data:
-                    tokenized_sent.append((item.string, item.lemma, item.upos))
-                tokenized_para.append(tokenized_sent)
-            yield tokenized_para
+                if preprocess:
+                    if self.nlp == 'spacy':
+                        sent = preprocess(sent.text)
+                    else:
+                        sent = preprocess(sent)
+                yield sent
+
+    def words(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        for sent in self.sents(fileids, preprocess=preprocess):
+            words = self.word_tokenizer.tokenize(sent)
+            for word in words:
+                yield word.text
+
+    # def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+    #     for sent in self.sents(fileids):
+    #         data = self.nlp.analyze(text=sent)
+    #         pos_sent = []
+    #         for item in data:
+    #             pos_sent.append(f"{item.string}/{item.upos}")
+    #         yield pos_sent                
+        
+    def tokenized_sents(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
+        for text in self.texts(fileids):
+            if unline:
+                text = ' '.join(text.split()).strip()
+            sents = self.sent_tokenizer.tokenize(text)
+            for sent in sents:
+                if preprocess:
+                    if self.nlp == 'spacy':
+                        sent = preprocess(sent.text)
+                    else:
+                        sent = preprocess(sent)
+                if self.nlp == 'spacy':
+                    tokens_ = [token for token in self.word_tokenizer.tokenize(sent)]
+                    words = [token.text for token in tokens_]
+                    lemmas = [token.lemma_ for token in tokens_]
+                    postags = [token.pos_ for token in tokens_]
+                else:
+                    words = [token for token in self.word_tokenizer.tokenize(sent)]
+                    lemmas = [lemma for _, lemma in self.lemmatizer.lemmatize(sent)]
+                    postags = [postag for postag in self.pos_tagger.tag(sent)]
+
+                yield list(zip(words, lemmas, postags))
+
 
 # TODO: Add corpus download support following Tesserae example
 LatinPerseusTreebankCorpusReader = PerseusTreebankCorpusReader
@@ -200,12 +249,17 @@ class LatinPerseusCorpusReader(PerseusCorpusReader):
         PerseusCorpusReader.__init__(self, root, fileids, encoding=encoding)
 
 
-    def sents(self, fileids: Union[str, list] = None):
+    def sents(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
         for para in self.paras(fileids):
-            # unline para
-            para = ' '.join(para.split()).strip()
+            if unline:
+                para = ' '.join(para.split()).strip()
             sents = self.sent_tokenizer.tokenize(para)
             for sent in sents:
+                if preprocess:
+                    if self.nlp == 'spacy':
+                        sent = preprocess(sent.text)
+                    else:
+                        sent = preprocess(sent)
                 yield sent
 
     def words(self, fileids: Union[str, list] = None):
@@ -214,13 +268,25 @@ class LatinPerseusCorpusReader(PerseusCorpusReader):
             for word in words:
                 yield word.text
         
-    def tokenized_sents(self, fileids=None):
+    def tokenized_sents(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
         for para in self.paras(fileids):
-            # unline para
-            para = ' '.join(para.split()).strip()
+            if unline:
+               para = ' '.join(para.split()).strip()
             sents = self.sent_tokenizer.tokenize(para)
             for sent in sents:
-                tokens = [token.text for token in self.word_tokenizer.tokenize(sent)]
-                lemmas = [lemma for lemma in self.lemmatizer.lemmatize(sent)]
-                postags = [postag for postag in self.pos_tagger.tag(sent)]
-                yield list(zip(tokens, lemmas, postags))
+                if preprocess:
+                    if self.nlp == 'spacy':
+                        sent = preprocess(sent.text)
+                    else:
+                        sent = preprocess(sent)
+                if self.nlp == 'spacy':
+                    tokens_ = [token for token in self.word_tokenizer.tokenize(sent)]
+                    words = [token.text for token in tokens_]
+                    lemmas = [token.lemma_ for token in tokens_]
+                    postags = [token.pos_ for token in tokens_]
+                else:
+                    words = [token for token in self.word_tokenizer.tokenize(sent)]
+                    lemmas = [lemma for _, lemma in self.lemmatizer.lemmatize(sent)]
+                    postags = [postag for postag in self.pos_tagger.tag(sent)]
+
+                yield list(zip(words, lemmas, postags))                
