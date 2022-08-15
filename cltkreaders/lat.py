@@ -181,6 +181,30 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
     #         for item in data:
     #             pos_sent.append(f"{item.string}/{item.upos}")
     #         yield pos_sent                
+
+    def tokenized_paras(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
+        for text in self.texts(fileids):
+            tokenized_para = []
+            if unline:
+                text = ' '.join(text.split()).strip()
+            sents = self.sent_tokenizer.tokenize(text)
+            for sent in sents:
+                if preprocess:
+                    if self.nlp == 'spacy':
+                        sent = preprocess(sent.text)
+                    else:
+                        sent = preprocess(sent)
+                if self.nlp == 'spacy':
+                    tokens_ = [token for token in self.word_tokenizer.tokenize(sent)]
+                    words = [token.text for token in tokens_]
+                    lemmas = [token.lemma_ for token in tokens_]
+                    postags = [token.pos_ for token in tokens_]
+                else:
+                    words = [token for token in self.word_tokenizer.tokenize(sent)]
+                    lemmas = [lemma for _, lemma in self.lemmatizer.lemmatize(sent)]
+                    postags = [postag for postag in self.pos_tagger.tag(sent)]
+                tokenized_para.append(list(zip(words, lemmas, postags)))
+            yield tokenized_para
         
     def tokenized_sents(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
         for text in self.texts(fileids):
