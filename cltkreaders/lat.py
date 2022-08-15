@@ -7,7 +7,10 @@ __license__ = "MIT License."
 import os.path
 from typing import Callable, Iterator, Union
 
-from cltkreaders.readers import TesseraeCorpusReader, PerseusTreebankCorpusReader
+import spacy
+nlp = spacy.load('la_core_cltk_sm')
+
+from cltkreaders.readers import TesseraeCorpusReader, PerseusTreebankCorpusReader, PerseusCorpusReader
 
 from cltk import NLP
 from cltk.core.data_types import Pipeline
@@ -16,10 +19,37 @@ from cltk.alphabet.processes import LatinNormalizeProcess
 from cltk.dependency.processes import LatinStanzaProcess
 from cltk.sentence.lat import LatinPunktSentenceTokenizer
 from cltk.tokenizers.lat.lat import LatinWordTokenizer
+from cltk.lemmatize.lat import LatinBackoffLemmatizer
 
 from cltk.utils import get_cltk_data_dir, query_yes_no
 from cltk.data.fetch import FetchCorpus
 from cltk.core.exceptions import CLTKException
+
+class spacy_segmenter():
+    def __init__(self):
+        pass
+    def tokenize(self, doc):
+        doc = nlp(doc)
+        return [sent for sent in doc.sents]
+
+class spacy_tokenizer():
+    def __init__(self):
+        pass
+    def tokenize(self, doc):
+        return [token for token in doc]
+
+class spacy_lemmatizer():
+    def __init__(self):
+        pass    
+    def lemmatize(self, doc):
+        return [token.lemma_ for token in doc]
+
+class spacy_pos_tagger():
+    def __init__(self):
+        pass
+    def tag(self, doc):
+        return [token.pos_ for token in doc]
+
 
 class LatinTesseraeCorpusReader(TesseraeCorpusReader):
     """
@@ -27,7 +57,7 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
     """
 
     def __init__(self, root: str = None, fileids: str = r'.*\.tess', encoding: str = 'utf-8', lang: str = 'lat',
-                 normalization_form: str = 'NFC',
+                 nlp='spacy', normalization_form: str = 'NFC',
                  word_tokenizer: Callable = None, sent_tokenizer: Callable = None, **kwargs):
         """
         :param root: Location of plaintext files to be read into corpus reader
@@ -43,21 +73,28 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
 
         self.__check_corpus()
 
-        
-        pipeline = Pipeline(description="Latin pipeline for Tesserae readers", 
-                            processes=[LatinNormalizeProcess, LatinStanzaProcess], 
-                            language=get_lang(self.lang))
-        self.nlp = NLP(language=lang, custom_pipeline=pipeline, suppress_banner=True)
+        self.nlp = nlp
 
-        if not word_tokenizer:
-            self.word_tokenizer = LatinWordTokenizer()
-        else:
-            self.word_tokenizer = word_tokenizer
+        if self.nlp == 'spacy':
+            self.sent_tokenizer = spacy_segmenter()
+            self.word_tokenizer = spacy_tokenizer()
+            self.lemmatizer = spacy_lemmatizer()
+            self.pos_tagger = spacy_pos_tagger()
+        else:        
+            pipeline = Pipeline(description="Latin pipeline for Tesserae readers", 
+                                processes=[LatinNormalizeProcess, LatinStanzaProcess], 
+                                language=get_lang(self.lang))
+            self.nlp = NLP(language=lang, custom_pipeline=pipeline, suppress_banner=True)
 
-        if not sent_tokenizer:
-            self.sent_tokenizer = LatinPunktSentenceTokenizer()
-        else:
-            self.sent_tokenizer = sent_tokenizer
+            if not word_tokenizer:
+                self.word_tokenizer = LatinWordTokenizer()
+            else:
+                self.word_tokenizer = word_tokenizer
+
+            if not sent_tokenizer:
+                self.sent_tokenizer = LatinPunktSentenceTokenizer()
+            else:
+                self.sent_tokenizer = sent_tokenizer
 
         
         TesseraeCorpusReader.__init__(self, self.root, fileids, encoding, self.lang,
@@ -122,3 +159,68 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
 
 # TODO: Add corpus download support following Tesserae example
 LatinPerseusTreebankCorpusReader = PerseusTreebankCorpusReader
+
+
+class LatinPerseusCorpusReader(PerseusCorpusReader):
+    """
+    A corpus reader for working Perseus XML files, inc.
+    PDILL: https://www.perseus.tufts.edu/hopper/collection?collection=Perseus:collection:PDILL
+
+    NB: `root` should point to a directory containing the xml files
+    """
+
+    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', lang='la', nlp='spacy',
+                word_tokenizer: Callable = None, sent_tokenizer: Callable = None, 
+                lemmatizer: Callable = None, pos_tagger: Callable = None,
+                **kwargs):
+        
+        self.nlp = nlp
+
+        if self.nlp == 'spacy':
+            self.sent_tokenizer = spacy_segmenter()
+            self.word_tokenizer = spacy_tokenizer()
+            self.lemmatizer = spacy_lemmatizer()
+            self.pos_tagger = spacy_pos_tagger()
+        else:
+            if word_tokenizer:
+                self.word_tokenizer = word_tokenizer
+            else:
+                self.word_tokenizer = LatinWordTokenizer()
+
+            if sent_tokenizer:
+                self.sent_tokenizer = sent_tokenizer
+            else:
+                self.sent_tokenizer = LatinPunktSentenceTokenizer()
+
+            if lemmatizer:
+                self.lemmatizer = lemmatizer
+            else:
+                self.lemmatizer = LatinBackoffLemmatizer()         
+
+        PerseusCorpusReader.__init__(self, root, fileids, encoding=encoding)
+
+
+    def sents(self, fileids: Union[str, list] = None):
+        for para in self.paras(fileids):
+            # unline para
+            para = ' '.join(para.split()).strip()
+            sents = self.sent_tokenizer.tokenize(para)
+            for sent in sents:
+                yield sent
+
+    def words(self, fileids: Union[str, list] = None):
+        for sent in self.sents(fileids):
+            words = self.word_tokenizer.tokenize(sent)
+            for word in words:
+                yield word.text
+        
+    def tokenized_sents(self, fileids=None):
+        for para in self.paras(fileids):
+            # unline para
+            para = ' '.join(para.split()).strip()
+            sents = self.sent_tokenizer.tokenize(para)
+            for sent in sents:
+                tokens = [token.text for token in self.word_tokenizer.tokenize(sent)]
+                lemmas = [lemma for lemma in self.lemmatizer.lemmatize(sent)]
+                postags = [postag for postag in self.pos_tagger.tag(sent)]
+                yield list(zip(tokens, lemmas, postags))

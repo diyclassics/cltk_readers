@@ -21,6 +21,8 @@ from typing import Callable, DefaultDict, Iterator, Union
 import xml.etree.ElementTree as ET
 from lxml import etree
 
+import numpy as np
+
 from nltk import FreqDist
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
@@ -588,3 +590,40 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
 
             annotated_sent = list(zip(token_sent, lemma_sent, pos_sent))
             yield annotated_sent
+
+class PerseusCorpusReader(TEICorpusReader):
+    """
+    A corpus reader for working Perseus XML files, inc.
+    PDILL: https://www.perseus.tufts.edu/hopper/collection?collection=Perseus:collection:PDILL
+
+    NB: `root` should point to a directory containing the AGLDT files
+    """
+
+    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', **kwargs):
+        TEICorpusReader.__init__(self, root, fileids, encoding=encoding)
+
+    def bodies(self, fileids: Union[str, list] = None):
+        # TODO: Add drop_tags parameter to handle `note` etc.
+
+        for doc in self.docs(fileids):
+            root = etree.fromstring(doc)
+            
+            # Remove `note` elements; see above
+            notes = root.iterfind('.//note')           
+            if notes:
+                for note in notes: 
+                    note.getparent().remove(note)
+            
+            body = root.find(f'.//body')
+            yield body
+
+    def paras(self, fileids: Union[str, list] = None):
+        for body in self.bodies(fileids):
+            paras = body.findall('.//p')
+            
+            # If no paras available, return entire body as a 'para'
+            if not paras:
+                paras = [body]
+            
+            for para in paras:
+                yield ' '.join(para.itertext())                   
