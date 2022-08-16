@@ -9,6 +9,7 @@ from typing import Callable, Iterator, Union
 
 import spacy
 nlp = spacy.load('la_core_cltk_sm')
+nlp.max_length = 2500000
 
 from cltkreaders.readers import TesseraeCorpusReader, PerseusTreebankCorpusReader, PerseusCorpusReader
 
@@ -172,15 +173,7 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
         for sent in self.sents(fileids, preprocess=preprocess):
             words = self.word_tokenizer.tokenize(sent)
             for word in words:
-                yield word.text
-
-    # def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
-    #     for sent in self.sents(fileids):
-    #         data = self.nlp.analyze(text=sent)
-    #         pos_sent = []
-    #         for item in data:
-    #             pos_sent.append(f"{item.string}/{item.upos}")
-    #         yield pos_sent                
+                yield word.text            
 
     def tokenized_paras(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
         for text in self.texts(fileids):
@@ -207,27 +200,8 @@ class LatinTesseraeCorpusReader(TesseraeCorpusReader):
             yield tokenized_para
         
     def tokenized_sents(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
-        for text in self.texts(fileids):
-            if unline:
-                text = ' '.join(text.split()).strip()
-            sents = self.sent_tokenizer.tokenize(text)
-            for sent in sents:
-                if preprocess:
-                    if self.nlp == 'spacy':
-                        sent = preprocess(sent.text)
-                    else:
-                        sent = preprocess(sent)
-                if self.nlp == 'spacy':
-                    tokens_ = [token for token in self.word_tokenizer.tokenize(sent)]
-                    words = [token.text for token in tokens_]
-                    lemmas = [token.lemma_ for token in tokens_]
-                    postags = [token.pos_ for token in tokens_]
-                else:
-                    words = [token for token in self.word_tokenizer.tokenize(sent)]
-                    lemmas = [lemma for _, lemma in self.lemmatizer.lemmatize(sent)]
-                    postags = [postag for postag in self.pos_tagger.tag(sent)]
-
-                yield list(zip(words, lemmas, postags))
+        for sent in self.tokenized_paras(filieids, unline=unline, preprocess=preprocess):
+            yield sent
 
 
 # TODO: Add corpus download support following Tesserae example
@@ -291,12 +265,13 @@ class LatinPerseusCorpusReader(PerseusCorpusReader):
             words = self.word_tokenizer.tokenize(sent)
             for word in words:
                 yield word.text
-        
-    def tokenized_sents(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
-        for para in self.paras(fileids):
+
+    def tokenized_paras(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
+        for text in self.texts(fileids):
+            tokenized_para = []
             if unline:
-               para = ' '.join(para.split()).strip()
-            sents = self.sent_tokenizer.tokenize(para)
+                text = ' '.join(text.split()).strip()
+            sents = self.sent_tokenizer.tokenize(text)
             for sent in sents:
                 if preprocess:
                     if self.nlp == 'spacy':
@@ -312,5 +287,9 @@ class LatinPerseusCorpusReader(PerseusCorpusReader):
                     words = [token for token in self.word_tokenizer.tokenize(sent)]
                     lemmas = [lemma for _, lemma in self.lemmatizer.lemmatize(sent)]
                     postags = [postag for postag in self.pos_tagger.tag(sent)]
+                tokenized_para.append(list(zip(words, lemmas, postags)))
+            yield tokenized_para                
 
-                yield list(zip(words, lemmas, postags))                
+    def tokenized_sents(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
+        for sent in self.tokenized_paras(filieids, unline=unline, preprocess=preprocess):
+            yield sent
