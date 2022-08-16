@@ -242,7 +242,9 @@ class LatinPerseusCorpusReader(PerseusCorpusReader):
             if lemmatizer:
                 self.lemmatizer = lemmatizer
             else:
-                self.lemmatizer = LatinBackoffLemmatizer()         
+                self.lemmatizer = LatinBackoffLemmatizer() 
+
+        self._root = root                        
 
         PerseusCorpusReader.__init__(self, root, fileids, encoding=encoding)
 

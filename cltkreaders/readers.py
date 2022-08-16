@@ -591,7 +591,7 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
             annotated_sent = list(zip(token_sent, lemma_sent, pos_sent))
             yield annotated_sent
 
-class PerseusCorpusReader(TEICorpusReader):
+class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
     """
     A corpus reader for working Perseus XML files, inc.
     PDILL: https://www.perseus.tufts.edu/hopper/collection?collection=Perseus:collection:PDILL
@@ -600,6 +600,7 @@ class PerseusCorpusReader(TEICorpusReader):
     """
 
     def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', **kwargs):
+        self._metadata = self.load_metadata()
         TEICorpusReader.__init__(self, root, fileids, encoding=encoding)
 
     def bodies(self, fileids: Union[str, list] = None):
