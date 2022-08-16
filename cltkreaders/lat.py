@@ -269,11 +269,11 @@ class LatinPerseusCorpusReader(PerseusCorpusReader):
                 yield word.text
 
     def tokenized_paras(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
-        for text in self.texts(fileids):
+        for para in self.paras(fileids):
             tokenized_para = []
             if unline:
-                text = ' '.join(text.split()).strip()
-            sents = self.sent_tokenizer.tokenize(text)
+                para = ' '.join(para.split()).strip()
+            sents = self.sent_tokenizer.tokenize(para)
             for sent in sents:
                 if preprocess:
                     if self.nlp == 'spacy':
