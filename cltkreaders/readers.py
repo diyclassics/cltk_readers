@@ -603,6 +603,12 @@ class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
         self._metadata = self.load_metadata()
         TEICorpusReader.__init__(self, root, fileids, encoding=encoding)
 
+    def headers(self, fileids: Union[str, list] = None):
+        for doc in self.docs(fileids):
+            root = etree.fromstring(doc, parser=etree.XMLParser(huge_tree=True))
+            header = root.find('.//teiHeader')
+            yield header
+
     def bodies(self, fileids: Union[str, list] = None):
         # TODO: Add drop_tags parameter to handle `note` etc.
 
