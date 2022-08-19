@@ -37,6 +37,7 @@ from pyuca import Collator
 c = Collator()
 
 class CLTKCorpusReaderMixin():
+
     def load_metadata(self):
         jsonfiles = glob.glob(f'{self.root}/**/metadata/*.json', recursive=True)
         jsons = [json.load(open(file)) for file in jsonfiles]
@@ -141,14 +142,42 @@ class CLTKCorpusReaderMixin():
         
         return '\n\n'.join(license_full)
 
+class CLTKPlaintextCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
+    """
+    Generic corpus reader for plaintext texts
+    """
+    def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8', 
+                 normalization_form: str = 'NFC', **kwargs):
+        self._root = root                 
+        self.normalization_form = normalization_form
+        self._metadata = self.load_metadata()
+        PlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
 
-class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
+    def docs(self, fileids: Union[list, str] = None) -> Iterator[str]: 
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :yield: Plaintext content of file
+        """
+        for path, encoding in self.abspaths(fileids, include_encoding=True):
+            with codecs.open(path, 'r', encoding=encoding) as f:
+                doc = f.read()
+                doc = doc.strip()
+                yield doc
+
+    def paras(self, fileids: Union[list, str] = None) -> Iterator[str]:
+        for doc in self.docs(fileids):
+            paras = doc.split('\n\n')
+            for para in paras:
+                yield para
+
+
+class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
     """
     Generic corpus reader for texts from the Tesserae-CLTK corpus
     """
 
     def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8', lang: str = None,
-                 normalization_form: str = 'NFC',
+                 
                  word_tokenizer: Callable = None, sent_tokenizer: Callable = None, **kwargs):
         """
         :param root: Location of plaintext files to be read into corpus reader
@@ -191,29 +220,8 @@ class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
                 self.word_tokenizer = GreekWordTokenizer()
             if self.lang == 'lat':
                 self.word_tokenizer = LatinWordTokenizer()
-
-        self.normalization_form = normalization_form
         
-        self._metadata = self.load_metadata()
-        PlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
-
-    def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
-        """
-        :param fileids: Subset of files to be processed by reader tasks
-        :yield: Plaintext content of Tesserae file
-        """
-        for path, encoding in self.abspaths(fileids, include_encoding=True):
-            with codecs.open(path, 'r', encoding=encoding) as f:
-                doc = f.read()
-                doc = unicodedata.normalize(self.normalization_form, doc)
-                doc = doc.strip()
-                yield doc
-
-    def paras(self, fileids: Union[list, str] = None):
-        """
-        Tesserae documents (at present) are not marked up to include paragraph divisions
-        """
-        raise NotImplementedError
+        CLTKPlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
 
     def doc_rows(self, fileids: Union[list, str] = None) -> Iterator[dict]:
         """
@@ -256,13 +264,30 @@ class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
                 text = preprocess(text)
             yield text
 
+    def paras(self, fileids: Union[list, str] = None, preprocess: Callable = None, para_threshold: int = 75):
+        """
+        Tesserae documents (at present) are not marked up to include paragraph divisions; accordingly, 
+        paras are set as equal to `texts` if avg doc_row value len >= para_threshold (assumed to be
+        poetry) or otherwise split by doc_row value, i.e. prose section
+
+        """
+        for text in self.texts(fileids, preprocess=preprocess):
+            def get_section_lens(section_text):
+                return len(section_text)
+            sections = [section for section in text.split('\n') if section]
+            sections_lens = [get_section_lens(section) for section in sections]
+            sections_mean = sum(sections_lens) / len(sections_lens)
+            if sections_mean >= para_threshold:
+                paras = sections
+            else:
+                paras = [text]
+            for para in paras:
+                yield para
+
     def sents(self, fileids: Union[list, str] = None, preprocess: Callable = None,
               unline: bool = False) -> Iterator[list]:
         """
-        :param fileids: Subset of files to be processed by reader tasks
-        :param preprocess: Allows a preprocessing function to be passed to reader task
-        :param unline: If `True`, removes newline characters from returned sents; useful in normalizing verse
-        :yield: List of sentences from Tesserae documents
+        TODO: Make abstract class and define in lang-specific modules
         """
         for text in self.texts(fileids):
             sents = self.sent_tokenizer.tokenize(text)
@@ -274,30 +299,13 @@ class TesseraeCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
                 else:
                     yield sent
 
-    def tokenized_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
-        """
-        :param fileids: Subset of files to be processed by reader tasks
-        :param preprocess: Allows a preprocessing function to be passed to reader task
-        :yield: List of words from Tesserae documents
-        """
-        for sent in self.sents(fileids, preprocess=preprocess):
-            tokens = self.word_tokenizer.tokenize(sent)
-            yield tokens
-
     def words(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
         """
-        :param fileids: Subset of files to be processed by reader tasks
-        :param preprocess: Allows a preprocessing function to be passed to reader task
-        :yield: List of words from Tesserae documents
+        TODO: Make abstract class and define in lang-specific modules
         """
         for tokenized_sent in self.tokenized_sents(fileids, preprocess=preprocess):
             for token in tokenized_sent:
                 yield token
-
-    def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
-        # TODO: add pos_sent method (cf. Bengfort et al. pp. 44-45)
-        # TODO: check CLTK Latin pos tagger
-        raise NotImplementedError
 
     def concordance(self, fileids: Union[list, str] = None, preprocess: Callable = None, compiled=False)\
             -> Iterator[dict]:
@@ -590,6 +598,7 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
 
             annotated_sent = list(zip(token_sent, lemma_sent, pos_sent))
             yield annotated_sent
+
 
 class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
     """
