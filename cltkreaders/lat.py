@@ -11,9 +11,8 @@ import spacy
 nlp = spacy.load('la_core_cltk_sm')
 nlp.max_length = 2500000
 
-# from cltkreaders.readers import CLTKPlaintextCorpusReader
-from readers import CLTKPlaintextCorpusReader
-from readers import TesseraeCorpusReader, PerseusTreebankCorpusReader, PerseusCorpusReader
+from cltkreaders.readers import CLTKPlaintextCorpusReader
+from cltkreaders.readers import TesseraeCorpusReader, PerseusTreebankCorpusReader, PerseusCorpusReader
 
 from cltk import NLP
 from cltk.core.data_types import Pipeline
