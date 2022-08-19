@@ -5,6 +5,7 @@ __author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
 __license__ = "MIT License."
 
 import os.path
+import codecs
 from typing import Callable, Iterator, Union
 
 from cltkreaders.readers import TesseraeCorpusReader, PerseusTreebankCorpusReader
@@ -99,6 +100,17 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
                     raise CLTKException(
                         f"Failed to instantiate GreekTesseraeCorpusReader. Rerun with 'root' parameter set to folder with .tess files or download the corpus to the CLTK_DATA folder."                                      
                     )
+
+    def docs(self, fileids: Union[list, str] = None) -> Iterator[str]: 
+        """
+        :param fileids: Subset of files to be processed by reader tasks
+        :yield: Plaintext content of file
+        """
+        for path, encoding in self.abspaths(fileids, include_encoding=True):
+            with codecs.open(path, 'r', encoding=encoding) as f:
+                doc = f.read()
+                doc = doc.strip()
+                yield doc     
 
     def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
         for sent in self.sents(fileids):
