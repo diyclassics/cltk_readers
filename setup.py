@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='cltk_readers',
-    version='0.4.0',
+    version='0.4.1',
     packages=['cltkreaders'],
     url='https://github.com/diyclassics/cltk_readers',
     license='MIT License',
@@ -13,7 +13,7 @@ setup(
                       'lxml==4.7.1', 
                       'pyuca==1.2',
                       'la-core-cltk-sm @ https://github.com/diyclassics/latin-spacy-models/blob/main/la_core_cltk_sm/la_core_cltk_sm-0.1.0.tar.gz?raw=true',
-                      'spacy @ git+https://github.com/diyclassics/spaCy.git@59f2866620af24138e660e7c88921c87aaaebb60',
+                      'spacy @ git+https://github.com/diyclassics/spaCy.git',
     ],
     classifiers=[
         'Development Status :: 1 - Planning',

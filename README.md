@@ -1,7 +1,7 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
-Version 0.4.0; tested on Python 3.10.4, CLTK 1.1.1
+Version 0.4.1; tested on Python 3.10.4, CLTK 1.1.1
 
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
@@ -47,6 +47,7 @@ Version 0.4.0; tested on Python 3.10.4, CLTK 1.1.1
 - [Universal Dependency treebanks (UD)](https://universaldependencies.org/)
 
 ## Change log
+- 0.4.1: Update spaCy dependency
 - 0.4.0: Add support for Latin Library (and similar plaintext collections)
 - 0.3.0: Add support for Perseus-style TEI/XML files; add Latin spaCy support for lemmatization and POS tagging
 - 0.2.4: Add support for Universal Dependencies files
