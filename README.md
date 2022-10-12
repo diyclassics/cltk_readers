@@ -45,7 +45,7 @@ Version 0.4.1; tested on Python 3.10.4, CLTK 1.1.1
 - [Latin Library](https://www.thelatinlibrary.com/)
 - [Perseus Dependency Treebanks (AGLDT)](https://perseusdl.github.io/treebank_data/)
 - [Universal Dependency treebanks (UD)](https://universaldependencies.org/)
-- []
+- [Reference Corpus of Middle High German (1050–1350)](https://zenodo.org/record/3624693#.Y0ZyMEzP2Uk)
 
 ## Change log
 - 0.4.1: Update spaCy dependency
