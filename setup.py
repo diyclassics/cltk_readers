@@ -10,10 +10,10 @@ setup(
     author_email='patrick@diyclassics.org',
     description='Corpus reader extension for the Classical Language Toolkit ',
     install_requires=['cltk~=1.1.1',
-                      'lxml==4.7.1', 
+                      'lxml==4.9.1', 
                       'pyuca==1.2',
                       'la-core-cltk-sm @ https://github.com/diyclassics/latin-spacy-models/blob/main/la_core_cltk_sm/la_core_cltk_sm-0.1.0.tar.gz?raw=true',
-                      'spacy @ git+https://github.com/diyclassics/spaCy.git',
+                      'spacy==3.4.2',
     ],
     classifiers=[
         'Development Status :: 1 - Planning',
