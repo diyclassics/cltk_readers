@@ -354,11 +354,12 @@ class TEICorpusReader(XMLCorpusReader):
     A corpus reader for working TEI/XML docs
     """
 
-    def __init__(self, root, fileids: str = r'.*\.xml', encoding='utf8', **kwargs):
+    def __init__(self, root, fileids: str = r'.*\.xml', encoding='utf8', ns=None, **kwargs):
         """
         """
         XMLCorpusReader.__init__(self, root, fileids)
-        self.ns = {'tei': 'http://www.tei-c.org/ns/1.0'}
+        # self.ns = {'tei': 'http://www.tei-c.org/ns/1.0'}
+        self.ns = ns
 
     def docs(self,  fileids: Union[str, list] = None):
         """
@@ -377,7 +378,10 @@ class TEICorpusReader(XMLCorpusReader):
     def bodies(self, fileids: Union[str, list] = None):
         for doc in self.docs(fileids):
             root = ET.fromstring(doc)
-            body = root.find(f'.//tei:body', self.ns)
+            if self.ns:
+                body = root.find(f'.//tei:body', self.ns)
+            else:
+                body = root.find(f'.//body')
             yield body
 
 
@@ -603,19 +607,21 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
 class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
     """
     A corpus reader for working Perseus XML files, inc.
-    PDILL: https://www.perseus.tufts.edu/hopper/collection?collection=Perseus:collection:PDILL
-
-    NB: `root` should point to a directory containing the AGLDT files
     """
 
-    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', **kwargs):
+    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', ns=None, nlp=None, **kwargs):
+        self._root = root
         self._metadata = self.load_metadata()
-        TEICorpusReader.__init__(self, root, fileids, encoding=encoding)
+        self.ns = ns
+        TEICorpusReader.__init__(self, root, fileids, encoding=encoding, ns=ns)
 
     def headers(self, fileids: Union[str, list] = None):
         for doc in self.docs(fileids):
             root = etree.fromstring(doc, parser=etree.XMLParser(huge_tree=True))
-            header = root.find('.//teiHeader')
+            if self.ns:
+                header = root.find('.//tei:teiHeader', self.ns)
+            else:
+                header = root.find('.//teiHeader')
             yield header
 
     def bodies(self, fileids: Union[str, list] = None):
@@ -625,20 +631,30 @@ class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
             root = etree.fromstring(doc)
             
             # Remove `note` elements; see above
-            notes = root.iterfind('.//note')           
+            if self.ns:
+                notes = root.iterfind('.//tei:note', self.ns)
+            else:
+                notes = root.iterfind('.//note')           
             if notes:
                 for note in notes: 
                     note.getparent().remove(note)
             
-            body = root.find(f'.//body')
+            if self.ns:
+                body = root.find(f'.//tei:body', self.ns)
+            else:
+                body = root.find(f'.//body')
+
             yield body
 
     def paras(self, fileids: Union[str, list] = None):
         for body in self.bodies(fileids):
-            paras = body.findall('.//p')
+            if self.ns:
+                paras = body.findall(f'.//tei:p', self.ns)
+            else:
+                paras = body.findall('.//p')
             
             # If no paras available, return entire body as a 'para'
-            if not paras:
+            if paras is not None:
                 paras = [body]
             
             for para in paras:
