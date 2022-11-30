@@ -68,6 +68,35 @@ class cltk_pos_tagger():
         return [token.pos.name for token in doc]
 
 class CLTKLatinCorpusReaderMixin():
+
+    def _setup_latin_tools(self, nlp):
+        if nlp == 'spacy':
+            self.sent_tokenizer = spacy_segmenter()
+            self.word_tokenizer = spacy_tokenizer()
+            self.lemmatizer = spacy_lemmatizer()
+            self.pos_tagger = spacy_pos_tagger()
+        else:        
+            if not word_tokenizer:
+                self.word_tokenizer = LatinWordTokenizer()
+            else:
+                self.word_tokenizer = word_tokenizer
+
+            if not sent_tokenizer:
+                self.sent_tokenizer = LatinPunktSentenceTokenizer()
+            else:
+                self.sent_tokenizer = sent_tokenizer
+
+            if lemmatizer:
+                self.lemmatizer = lemmatizer
+            else:
+                self.lemmatizer = LatinBackoffLemmatizer()                    
+
+            if pos_tagger:
+                self.pos_tagger = pos_tagger
+            else:
+                self.pos_tagger = cltk_pos_tagger(lang=self.lang)          
+
+
     def sents(self, fileids: Union[list, str] = None, unline: bool = True, preprocess: Callable = None) -> Iterator[list]:
         for para in self.paras(fileids):
             if unline:
@@ -82,6 +111,7 @@ class CLTKLatinCorpusReaderMixin():
                 yield sent      
 
     def words(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+        print(self.nlp)
         for sent in self.sents(fileids, preprocess=preprocess):
             words = self.word_tokenizer.tokenize(sent)
             for word in words:
@@ -140,32 +170,7 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         self.__check_corpus()
 
         self.nlp = nlp
-
-        if self.nlp == 'spacy':
-            self.sent_tokenizer = spacy_segmenter()
-            self.word_tokenizer = spacy_tokenizer()
-            self.lemmatizer = spacy_lemmatizer()
-            self.pos_tagger = spacy_pos_tagger()
-        else:        
-            if not word_tokenizer:
-                self.word_tokenizer = LatinWordTokenizer()
-            else:
-                self.word_tokenizer = word_tokenizer
-
-            if not sent_tokenizer:
-                self.sent_tokenizer = LatinPunktSentenceTokenizer()
-            else:
-                self.sent_tokenizer = sent_tokenizer
-
-            if lemmatizer:
-                self.lemmatizer = lemmatizer
-            else:
-                self.lemmatizer = LatinBackoffLemmatizer()                    
-
-            if pos_tagger:
-                self.pos_tagger = pos_tagger
-            else:
-                self.pos_tagger = cltk_pos_tagger(lang=self.lang)                  
+        self._setup_latin_tools(self.nlp)
 
         TesseraeCorpusReader.__init__(self, self.root, fileids, encoding, self.lang,
                                       word_tokenizer=self.word_tokenizer,
@@ -218,37 +223,32 @@ class LatinPerseusCorpusReader(CLTKLatinCorpusReaderMixin, PerseusCorpusReader):
     NB: `root` should point to a directory containing the xml files
     """
 
-    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', lang='la', nlp='spacy',
+    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', ns = None,lang='la', nlp='spacy',
                 word_tokenizer: Callable = None, sent_tokenizer: Callable = None, 
                 lemmatizer: Callable = None, pos_tagger: Callable = None,
                 **kwargs):
         
         self.nlp = nlp
+        self._setup_latin_tools(self.nlp)                                 
+        PerseusCorpusReader.__init__(self, root, fileids, encoding=encoding, nlp=nlp, ns=ns)                
 
-        if self.nlp == 'spacy':
-            self.sent_tokenizer = spacy_segmenter()
-            self.word_tokenizer = spacy_tokenizer()
-            self.lemmatizer = spacy_lemmatizer()
-            self.pos_tagger = spacy_pos_tagger()
-        else:
-            if word_tokenizer:
-                self.word_tokenizer = word_tokenizer
-            else:
-                self.word_tokenizer = LatinWordTokenizer()
 
-            if sent_tokenizer:
-                self.sent_tokenizer = sent_tokenizer
-            else:
-                self.sent_tokenizer = LatinPunktSentenceTokenizer()
+class CSELCorpusReader(LatinPerseusCorpusReader):
+    """
+    A corpus reader for working Perseus CSEL XML files, inc.
+    cf. https://github.com/OpenGreekAndLatin/csel-dev
+    
+    NB: `root` should point to a directory containing the xml files
+    """
 
-            if lemmatizer:
-                self.lemmatizer = lemmatizer
-            else:
-                self.lemmatizer = LatinBackoffLemmatizer() 
+    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', lang='la', 
+                ns={'tei': 'http://www.tei-c.org/ns/1.0'}, nlp='spacy',
+                word_tokenizer: Callable = None, sent_tokenizer: Callable = None, 
+                lemmatizer: Callable = None, pos_tagger: Callable = None,
+                **kwargs):                             
 
-        self._root = root                        
-
-        PerseusCorpusReader.__init__(self, root, fileids, encoding=encoding)
+        LatinPerseusCorpusReader.__init__(self, root, fileids, encoding=encoding, nlp=nlp, ns=ns)
+        
 
 class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusReader):
     """
@@ -267,32 +267,7 @@ class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusRe
         self.__check_corpus()
 
         self.nlp = nlp
-
-        if self.nlp == 'spacy':
-            self.sent_tokenizer = spacy_segmenter()
-            self.word_tokenizer = spacy_tokenizer()
-            self.lemmatizer = spacy_lemmatizer()
-            self.pos_tagger = spacy_pos_tagger()
-        else:        
-            if not word_tokenizer:
-                self.word_tokenizer = LatinWordTokenizer()
-            else:
-                self.word_tokenizer = word_tokenizer
-
-            if not sent_tokenizer:
-                self.sent_tokenizer = LatinPunktSentenceTokenizer()
-            else:
-                self.sent_tokenizer = sent_tokenizer
-
-            if lemmatizer:
-                self.lemmatizer = lemmatizer
-            else:
-                self.lemmatizer = LatinBackoffLemmatizer()                    
-
-            if pos_tagger:
-                self.pos_tagger = pos_tagger
-            else:
-                self.pos_tagger = cltk_pos_tagger(lang=self.lang)                  
+        self._setup_latin_tools(self.nlp)                 
 
         CLTKPlaintextCorpusReader.__init__(self, self.root, fileids, encoding, self.lang)
 
