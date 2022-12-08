@@ -654,7 +654,7 @@ class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
                 paras = body.findall('.//p')
             
             # If no paras available, return entire body as a 'para'
-            if paras is not None:
+            if paras is None:
                 paras = [body]
             
             for para in paras:

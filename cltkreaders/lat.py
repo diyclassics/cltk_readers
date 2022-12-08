@@ -5,7 +5,11 @@ __author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
 __license__ = "MIT License."
 
 import os.path
+import codecs
 from typing import Callable, Iterator, Union
+
+import re
+from lxml import etree
 
 import spacy
 nlp = spacy.load('la_core_cltk_sm')
@@ -76,24 +80,16 @@ class CLTKLatinCorpusReaderMixin():
             self.lemmatizer = spacy_lemmatizer()
             self.pos_tagger = spacy_pos_tagger()
         else:        
-            if not word_tokenizer:
+            if not self.word_tokenizer:
                 self.word_tokenizer = LatinWordTokenizer()
-            else:
-                self.word_tokenizer = word_tokenizer
 
-            if not sent_tokenizer:
+            if not self.sent_tokenizer:
                 self.sent_tokenizer = LatinPunktSentenceTokenizer()
-            else:
-                self.sent_tokenizer = sent_tokenizer
 
-            if lemmatizer:
-                self.lemmatizer = lemmatizer
-            else:
+            if not self.lemmatizer:
                 self.lemmatizer = LatinBackoffLemmatizer()                    
 
-            if pos_tagger:
-                self.pos_tagger = pos_tagger
-            else:
+            if not self.pos_tagger:
                 self.pos_tagger = cltk_pos_tagger(lang=self.lang)          
 
 
@@ -111,7 +107,6 @@ class CLTKLatinCorpusReaderMixin():
                 yield sent      
 
     def words(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
-        print(self.nlp)
         for sent in self.sents(fileids, preprocess=preprocess):
             words = self.word_tokenizer.tokenize(sent)
             for word in words:
@@ -228,6 +223,11 @@ class LatinPerseusCorpusReader(CLTKLatinCorpusReaderMixin, PerseusCorpusReader):
                 lemmatizer: Callable = None, pos_tagger: Callable = None,
                 **kwargs):
         
+        self.word_tokenizer = word_tokenizer
+        self.sent_tokenizer = sent_tokenizer
+        self.lemmatizer = lemmatizer
+        self.pos_tagger = pos_tagger
+
         self.nlp = nlp
         self._setup_latin_tools(self.nlp)                                 
         PerseusCorpusReader.__init__(self, root, fileids, encoding=encoding, nlp=nlp, ns=ns)                
@@ -265,6 +265,11 @@ class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusRe
         self._root = root
 
         self.__check_corpus()
+
+        self.word_tokenizer = word_tokenizer
+        self.sent_tokenizer = sent_tokenizer
+        self.lemmatizer = lemmatizer
+        self.pos_tagger = pos_tagger
 
         self.nlp = nlp
         self._setup_latin_tools(self.nlp)                 
@@ -304,3 +309,56 @@ class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusRe
                     raise CLTKException(
                         f"Failed to instantiate corpus reader. Rerun with 'root' parameter set to folder with corpus files or download the corpus to the CLTK_DATA folder."
                     )               
+
+class CamenaCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
+    """
+    A corpus reader for working with Camena TEI/XML docs
+    cf. https://github.com/nevenjovanovic/camena-neolatinlit
+    """
+
+    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', lang='la', 
+                ns=None, nlp='spacy', include_front=True,
+                word_tokenizer: Callable = None, sent_tokenizer: Callable = None, 
+                lemmatizer: Callable = None, pos_tagger: Callable = None,
+                **kwargs):                             
+
+        self.include_front = include_front
+
+        LatinPerseusCorpusReader.__init__(self, root, fileids, encoding=encoding, nlp=nlp, ns=ns)
+
+    def _get_xml_encoding_from_file(self, file):
+        with open(file, 'rb') as f:
+            return re.search(rb'encoding="(.+?)"', f.read()).group(1).decode()
+
+    def docs(self,  fileids: Union[str, list] = None):
+        """
+        Returns the complete text of a .xml file, closing the document after
+        we are done reading it and yielding it in a memory-safe fashion.
+        """
+
+        # Create a generator, loading one document into memory at a time.
+        for path, encoding in self.abspaths(fileids, include_encoding=True):
+            encoding = self._get_xml_encoding_from_file(path)
+            with codecs.open(path, 'r', encoding=encoding) as f:
+                doc = f.read()
+                if doc:
+                    x = etree.fromstring(bytes(doc, encoding='utf-8'), parser=etree.XMLParser(huge_tree=True))
+                    yield etree.tostring(x, pretty_print=True, encoding=str)     
+
+    def contents(self, fileids: Union[str, list] = None):
+        for doc in self.docs(fileids):
+            root = etree.fromstring(doc)
+            if self.include_front:
+                contents = root.xpath(".//*[self::front or self::body]")
+            else:
+                contents = root.findall('.//body')
+            for content in contents:
+                yield content
+
+    def paras(self, fileids: Union[str, list] = None):
+        for content in self.contents(fileids):
+            paras = content.findall('.//p')
+            
+            for para in paras:
+                yield ' '.join(para.itertext())
+                

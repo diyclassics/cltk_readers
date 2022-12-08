@@ -1,7 +1,7 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
-Version 0.4.3; tested on Python 3.10.8, CLTK 1.1.5
+Version 0.4.4; tested on Python 3.10.8, CLTK 1.1.5
 
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
@@ -46,8 +46,10 @@ Version 0.4.3; tested on Python 3.10.8, CLTK 1.1.5
 - [Perseus Dependency Treebanks (AGLDT)](https://perseusdl.github.io/treebank_data/)
 - [Universal Dependency treebanks (UD)](https://universaldependencies.org/)
 - [Open Greek & Latin CSEL files](https://github.com/OpenGreekAndLatin/csel-dev)
+- [CAMENA (jovanovic fork)](https://github.com/nevenjovanovic/camena-neolatinlit)
 
 ## Change log
+- 0.4.4: Add support for [Camena](https://github.com/nevenjovanovic/camena-neolatinlit)
 - 0.4.3: Add support for Open Greek & Latin [CSEL files](https://github.com/OpenGreekAndLatin/csel-dev)
 - 0.4.2: Update lxml; also update spaCy dependency (now to main spaCy project, as of v. 3.4.2)
 - 0.4.1: Update spaCy dependency
