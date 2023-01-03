@@ -1,7 +1,7 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
-Version 0.4.5; tested on Python 3.10.8, CLTK 1.1.5
+Version 0.4.6; tested on Python 3.10.8, CLTK 1.1.5
 
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
@@ -18,8 +18,8 @@ Version 0.4.5; tested on Python 3.10.8, CLTK 1.1.5
 ```
 
 ```
->>> print(next(tess.tokenized_sents('vergil.aeneid.part.1.tess')))
-['Arma', 'virum', '-que', 'cano', ',', 'Troiae', 'qui', 'primus', 'ab', 'oris', 'Italiam', ',', 'fato', 'profugus', ',', 'Lavinia', '-que', 'venit', 'litora', ',', 'multum', 'ille', 'et', 'terris', 'iactatus', 'et', 'alto', 'vi', 'superum', 'saevae', 'memorem', 'Iunonis', 'ob', 'iram', ';', 'multa', 'quoque', 'et', 'bello', 'passus', ',', 'dum', 'conderet', 'urbem', ',', 'inferret', '-que', 'deos', 'Latio', ',', 'genus', 'unde', 'Latinum', ',', 'Albani', '-que', 'patres', ',', 'atque', 'altae', 'moenia', 'Romae', '.']
+>>> print(next(tess.tokenized_sents('vergil.aeneid.part.1.tess', simple=True)))
+['Arma', 'virumque', 'cano', ',', 'Troiae', 'qui', 'primus', 'ab', 'oris', 'Italiam', ',', 'fato', 'profugus', ',', 'Laviniaque', 'venit', 'litora', ',', 'multum', 'ille', 'et', 'terris', 'iactatus', 'et', 'alto', 'vi', 'superum', 'saevae', 'memorem', 'Iunonis', 'ob', 'iram', ';']
 ```
 
 ```
@@ -49,6 +49,7 @@ Version 0.4.5; tested on Python 3.10.8, CLTK 1.1.5
 - [CAMENA (jovanovic fork)](https://github.com/nevenjovanovic/camena-neolatinlit)
 
 ## Change log
+- 0.4.6: Add `simple` parameter to Tesserae `tokenized_sents`; add `pos_sents` to Tesserae; update packaging; update demo notebook
 - 0.4.5: Update spaCy dependency to [la_dep_cltk_sm-0.2.0](https://github.com/diyclassics/la_dep_cltk_sm)
 - 0.4.4: Add support for [Camena](https://github.com/nevenjovanovic/camena-neolatinlit)
 - 0.4.3: Add support for Open Greek & Latin [CSEL files](https://github.com/OpenGreekAndLatin/csel-dev)

@@ -1,5 +1,6 @@
 cltk==1.1.5
 la-dep-cltk-sm @ https://huggingface.co/diyclassics/la_dep_cltk_sm/resolve/main/la_dep_cltk_sm-0.2.0/dist/la_dep_cltk_sm-0.2.0.tar.gz
 lxml==4.9.1
+natsort==8.2.0
 pyuca==1.2
 spacy==3.4.2

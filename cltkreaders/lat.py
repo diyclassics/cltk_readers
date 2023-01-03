@@ -172,10 +172,20 @@ class CLTKLatinCorpusReaderMixin:
         fileids: Union[list, str] = None,
         unline: bool = True,
         preprocess: Callable = None,
+        simple=False,
     ) -> Iterator[list]:
         for para in self.tokenized_paras(fileids, unline=unline, preprocess=preprocess):
             for sent in para:
-                yield sent
+                if simple:
+                    yield [token for token, _, _ in sent]
+                else:
+                    yield sent
+
+    def pos_sents(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[list]:
+        for sent in self.tokenized_sents(fileids, preprocess=preprocess):
+            yield ["/".join([word, postag]) for word, _, postag in sent]
 
 
 class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader):
