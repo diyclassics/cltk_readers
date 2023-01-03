@@ -1,5 +1,5 @@
 cltk==1.1.5
-la-core-cltk-sm @ https://github.com/diyclassics/latin-spacy-models/blob/main/la_core_cltk_sm/la_core_cltk_sm-0.1.0.tar.gz?raw=true
+la-dep-cltk-sm @ https://huggingface.co/diyclassics/la_dep_cltk_sm/resolve/main/la_dep_cltk_sm-0.2.0/dist/la_dep_cltk_sm-0.2.0.tar.gz
 lxml==4.9.1
 pyuca==1.2
 spacy==3.4.2
