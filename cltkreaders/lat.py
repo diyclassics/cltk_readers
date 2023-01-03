@@ -173,8 +173,9 @@ class CLTKLatinCorpusReaderMixin:
         unline: bool = True,
         preprocess: Callable = None,
     ) -> Iterator[list]:
-        for sent in self.tokenized_paras(fileids, unline=unline, preprocess=preprocess):
-            yield sent
+        for para in self.tokenized_paras(fileids, unline=unline, preprocess=preprocess):
+            for sent in para:
+                yield sent
 
 
 class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader):
