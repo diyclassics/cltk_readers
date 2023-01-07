@@ -1,7 +1,7 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
-Version 0.4.6; tested on Python 3.10.8, CLTK 1.1.5
+Version 0.5.0; tested on Python 3.10.8, CLTK 1.1.5
 
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
@@ -49,7 +49,8 @@ Version 0.4.6; tested on Python 3.10.8, CLTK 1.1.5
 - [CAMENA (jovanovic fork)](https://github.com/nevenjovanovic/camena-neolatinlit)
 
 ## Change log
-- 0.4.6: Add `simple` parameter to Tesserae `tokenized_sents`; add `pos_sents` to Tesserae; update packaging; update demo notebook
+- 0.5.0: Update packaging for PyPI
+- 0.4.6: Add `simple` parameter to Tesserae `tokenized_sents`; add `pos_sents` to Tesserae; update demo notebook
 - 0.4.5: Update spaCy dependency to [la_dep_cltk_sm-0.2.0](https://github.com/diyclassics/la_dep_cltk_sm)
 - 0.4.4: Add support for [Camena](https://github.com/nevenjovanovic/camena-neolatinlit)
 - 0.4.3: Add support for Open Greek & Latin [CSEL files](https://github.com/OpenGreekAndLatin/csel-dev)
