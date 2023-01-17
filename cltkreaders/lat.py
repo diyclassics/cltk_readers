@@ -222,6 +222,33 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         self.__check_corpus()
 
         self.nlp = nlp
+
+        if self.nlp == 'spacy':
+            self.sent_tokenizer = spacy_segmenter()
+            self.word_tokenizer = spacy_tokenizer()
+            self.lemmatizer = spacy_lemmatizer()
+            self.pos_tagger = spacy_pos_tagger()
+        else:
+            if not word_tokenizer:
+                self.word_tokenizer = LatinWordTokenizer()
+            else:
+                self.word_tokenizer = word_tokenizer
+
+            if not sent_tokenizer:
+                self.sent_tokenizer = LatinPunktSentenceTokenizer()
+            else:
+                self.sent_tokenizer = sent_tokenizer
+
+            if lemmatizer:
+                self.lemmatizer = lemmatizer
+            else:
+                self.lemmatizer = LatinBackoffLemmatizer()
+
+            if pos_tagger:
+                self.pos_tagger = pos_tagger
+            else:
+                self.pos_tagger = cltk_pos_tagger(lang=self.lang)
+
         self._setup_latin_tools(self.nlp)
 
         TesseraeCorpusReader.__init__(
@@ -238,15 +265,15 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
     def root(self):
         if not self._root:
             self._root = os.path.join(
-                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
-            )
+                            get_cltk_data_dir(),
+                            self.lang, "text", self.corpus, "texts")
         return self._root
 
     def __check_corpus(self):
         if not os.path.isdir(self.root):
             if self.root != os.path.join(
-                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
-            ):
+                    get_cltk_data_dir(),
+                    self.lang, "text", self.corpus, "texts"):
                 raise CLTKException(
                     f"Failed to instantiate corpus reader. Root folder not found."
                 )
@@ -328,6 +355,11 @@ class CSELCorpusReader(LatinPerseusCorpusReader):
         pos_tagger: Callable = None,
         **kwargs,
     ):
+    
+        if lemmatizer:
+            self.lemmatizer = lemmatizer
+        else:
+            self.lemmatizer = LatinBackoffLemmatizer()
 
         LatinPerseusCorpusReader.__init__(
             self, root, fileids, encoding=encoding, nlp=nlp, ns=ns
@@ -359,12 +391,34 @@ class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusRe
 
         self.__check_corpus()
 
-        self.word_tokenizer = word_tokenizer
-        self.sent_tokenizer = sent_tokenizer
-        self.lemmatizer = lemmatizer
-        self.pos_tagger = pos_tagger
-
         self.nlp = nlp
+
+        if self.nlp == 'spacy':
+            self.sent_tokenizer = spacy_segmenter()
+            self.word_tokenizer = spacy_tokenizer()
+            self.lemmatizer = spacy_lemmatizer()
+            self.pos_tagger = spacy_pos_tagger()
+        else:
+            if not word_tokenizer:
+                self.word_tokenizer = LatinWordTokenizer()
+            else:
+                self.word_tokenizer = word_tokenizer
+
+            if not sent_tokenizer:
+                self.sent_tokenizer = LatinPunktSentenceTokenizer()
+            else:
+                self.sent_tokenizer = sent_tokenizer
+
+            if lemmatizer:
+                self.lemmatizer = lemmatizer
+            else:
+                self.lemmatizer = LatinBackoffLemmatizer()
+
+            if pos_tagger:
+                self.pos_tagger = pos_tagger
+            else:
+                self.pos_tagger = cltk_pos_tagger(lang=self.lang)
+
         self._setup_latin_tools(self.nlp)
 
         CLTKPlaintextCorpusReader.__init__(

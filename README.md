@@ -45,6 +45,7 @@ Version 0.5.2; tested on Python 3.10.8, CLTK 1.1.5
 - [Latin Library](https://www.thelatinlibrary.com/)
 - [Perseus Dependency Treebanks (AGLDT)](https://perseusdl.github.io/treebank_data/)
 - [Universal Dependency treebanks (UD)](https://universaldependencies.org/)
+- [Reference Corpus of Middle High German (1050–1350)](https://zenodo.org/record/3624693#.Y0ZyMEzP2Uk)
 - [Open Greek & Latin CSEL files](https://github.com/OpenGreekAndLatin/csel-dev)
 - [CAMENA (jovanovic fork)](https://github.com/nevenjovanovic/camena-neolatinlit)
 

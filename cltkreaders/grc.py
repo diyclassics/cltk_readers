@@ -90,15 +90,15 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
     def root(self):
         if not self._root:
             self._root = os.path.join(
-                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
-            )
+                            get_cltk_data_dir(),
+                            self.lang, "text", self.corpus, "texts")
         return self._root
 
     def __check_corpus(self):
         if not os.path.isdir(self.root):
             if self.root != os.path.join(
-                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
-            ):
+                    get_cltk_data_dir(),
+                    self.lang, "text", self.corpus, "texts"):
                 raise CLTKException(
                     f"Failed to instantiate GreekTesseraeCorpusReader. Root folder not found."
                 )
