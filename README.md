@@ -1,7 +1,7 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
-Version 0.4.1; tested on Python 3.10.4, CLTK 1.1.1
+Version 0.5.2; tested on Python 3.10.8, CLTK 1.1.5
 
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
@@ -18,8 +18,8 @@ Version 0.4.1; tested on Python 3.10.4, CLTK 1.1.1
 ```
 
 ```
->>> print(next(tess.tokenized_sents('vergil.aeneid.part.1.tess')))
-['Arma', 'virum', '-que', 'cano', ',', 'Troiae', 'qui', 'primus', 'ab', 'oris', 'Italiam', ',', 'fato', 'profugus', ',', 'Lavinia', '-que', 'venit', 'litora', ',', 'multum', 'ille', 'et', 'terris', 'iactatus', 'et', 'alto', 'vi', 'superum', 'saevae', 'memorem', 'Iunonis', 'ob', 'iram', ';', 'multa', 'quoque', 'et', 'bello', 'passus', ',', 'dum', 'conderet', 'urbem', ',', 'inferret', '-que', 'deos', 'Latio', ',', 'genus', 'unde', 'Latinum', ',', 'Albani', '-que', 'patres', ',', 'atque', 'altae', 'moenia', 'Romae', '.']
+>>> print(next(tess.tokenized_sents('vergil.aeneid.part.1.tess', simple=True)))
+['Arma', 'virumque', 'cano', ',', 'Troiae', 'qui', 'primus', 'ab', 'oris', 'Italiam', ',', 'fato', 'profugus', ',', 'Laviniaque', 'venit', 'litora', ',', 'multum', 'ille', 'et', 'terris', 'iactatus', 'et', 'alto', 'vi', 'superum', 'saevae', 'memorem', 'Iunonis', 'ob', 'iram', ';']
 ```
 
 ```
@@ -46,12 +46,21 @@ Version 0.4.1; tested on Python 3.10.4, CLTK 1.1.1
 - [Perseus Dependency Treebanks (AGLDT)](https://perseusdl.github.io/treebank_data/)
 - [Universal Dependency treebanks (UD)](https://universaldependencies.org/)
 - [Reference Corpus of Middle High German (1050–1350)](https://zenodo.org/record/3624693#.Y0ZyMEzP2Uk)
+- [Open Greek & Latin CSEL files](https://github.com/OpenGreekAndLatin/csel-dev)
+- [CAMENA (jovanovic fork)](https://github.com/nevenjovanovic/camena-neolatinlit)
 
 ## Change log
+- 0.5.1: Fix spaCy model installation
+- 0.5.0: Update packaging for PyPI
+- 0.4.6: Add `simple` parameter to Tesserae `tokenized_sents`; add `pos_sents` to Tesserae; update demo notebook
+- 0.4.5: Update spaCy dependency to [la_dep_cltk_sm-0.2.0](https://github.com/diyclassics/la_dep_cltk_sm)
+- 0.4.4: Add support for [Camena](https://github.com/nevenjovanovic/camena-neolatinlit)
+- 0.4.3: Add support for Open Greek & Latin [CSEL files](https://github.com/OpenGreekAndLatin/csel-dev)
+- 0.4.2: Update lxml; also update spaCy dependency (now to main spaCy project, as of v. 3.4.2)
 - 0.4.1: Update spaCy dependency
 - 0.4.0: Add support for Latin Library (and similar plaintext collections)
 - 0.3.0: Add support for Perseus-style TEI/XML files; add Latin spaCy support for lemmatization and POS tagging
 - 0.2.4: Add support for Universal Dependencies files
 - 0.2.3: Add support for Perseus AGLDT Treebanks
 
-*Coded 2022 by [Patrick J. Burns](http://github.com/diyclassics)*
+*Coded 2022-2023 by [Patrick J. Burns](http://github.com/diyclassics)*
