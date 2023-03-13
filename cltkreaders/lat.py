@@ -13,11 +13,6 @@ from typing import Callable, Iterator, Union
 import re
 from lxml import etree
 
-import spacy
-
-nlp = spacy.load("la_dep_cltk_sm")
-nlp.max_length = 2500000
-
 from cltkreaders.readers import CLTKPlaintextCorpusReader
 from cltkreaders.readers import (
     TesseraeCorpusReader,
@@ -37,41 +32,6 @@ from cltk.lemmatize.lat import LatinBackoffLemmatizer
 from cltk.utils import get_cltk_data_dir, query_yes_no
 from cltk.data.fetch import FetchCorpus
 from cltk.core.exceptions import CLTKException
-
-
-class spacy_segmenter:
-    def __init__(self):
-        pass
-
-    def tokenize(self, doc):
-        doc = nlp(doc)
-        return [sent for sent in doc.sents]
-
-
-class spacy_tokenizer:
-    def __init__(self):
-        pass
-
-    def tokenize(self, doc):
-        if isinstance(doc, str):
-            doc = nlp(doc)
-        return [token for token in doc]
-
-
-class spacy_lemmatizer:
-    def __init__(self):
-        pass
-
-    def lemmatize(self, doc):
-        return [token.lemma_ for token in doc]
-
-
-class spacy_pos_tagger:
-    def __init__(self):
-        pass
-
-    def tag(self, doc):
-        return [token.pos_ for token in doc]
 
 
 class cltk_pos_tagger:
@@ -95,6 +55,43 @@ class cltk_pos_tagger:
 class CLTKLatinCorpusReaderMixin:
     def _setup_latin_tools(self, nlp):
         if nlp == "spacy":
+
+            import spacy
+
+            model = spacy.load("la_dep_cltk_md")
+            model.max_length = 2500000
+
+            class spacy_segmenter:
+                def __init__(self):
+                    pass
+
+                def tokenize(self, doc):
+                    doc = model(doc)
+                    return [sent for sent in doc.sents]
+
+            class spacy_tokenizer:
+                def __init__(self):
+                    pass
+
+                def tokenize(self, doc):
+                    if isinstance(doc, str):
+                        doc = model(doc)
+                    return [token for token in doc]
+
+            class spacy_lemmatizer:
+                def __init__(self):
+                    pass
+
+                def lemmatize(self, doc):
+                    return [token.lemma_ for token in doc]
+
+            class spacy_pos_tagger:
+                def __init__(self):
+                    pass
+
+                def tag(self, doc):
+                    return [token.pos_ for token in doc]
+
             self.sent_tokenizer = spacy_segmenter()
             self.word_tokenizer = spacy_tokenizer()
             self.lemmatizer = spacy_lemmatizer()

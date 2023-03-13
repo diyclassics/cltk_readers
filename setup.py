@@ -4,21 +4,9 @@ import sys
 import subprocess
 from subprocess import getoutput
 
-
-# cf. https://github.com/BaderLab/saber/issues/35#issuecomment-467827175
-class PostInstall(install):
-    pkgs = " https://huggingface.co/diyclassics/la_dep_cltk_sm/resolve/main/la_dep_cltk_sm-0.2.0/dist/la_dep_cltk_sm-0.2.0.tar.gz"
-
-    def run(self):
-        install.run(self)
-        print(getoutput("pip install" + self.pkgs))
-        # https://pip.pypa.io/en/stable/user_guide/#using-pip-from-your-program
-        subprocess.call([sys.executable, "-m", "pip", "install", self.pkgs])
-
-
 setup(
     name="cltk_readers",
-    version="0.5.2",
+    version="0.5.3",
     packages=["cltkreaders"],
     url="https://github.com/diyclassics/cltk_readers",
     license="MIT License",
@@ -26,12 +14,12 @@ setup(
     author="Patrick J. Burns",
     author_email="patrick@diyclassics.org",
     description="Corpus reader extension for the Classical Language Toolkit ",
-    cmdclass={"install": PostInstall},
     install_requires=[
         "cltk~=1.1.5",
         "lxml==4.9.1",
         "pyuca==1.2",
-        "spacy==3.4.2",
+        "spacy~=3.5.1",
+        "la_dep_cltk_md@https://huggingface.co/diyclassics/la_dep_cltk_md/resolve/main/la_dep_cltk_md-0.3.1/dist/la_dep_cltk_md-0.3.1.tar.gz",
     ],
     classifiers=[
         "Development Status :: 1 - Planning",
