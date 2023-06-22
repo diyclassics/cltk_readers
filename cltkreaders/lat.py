@@ -58,7 +58,7 @@ class CLTKLatinCorpusReaderMixin:
 
             import spacy
 
-            model = spacy.load("la_dep_cltk_md")
+            model = spacy.load("la_core_web_md")
             model.max_length = 2500000
 
             class spacy_segmenter:
