@@ -58,7 +58,7 @@ class CLTKLatinCorpusReaderMixin:
 
             import spacy
 
-            model = spacy.load("la_core_web_md")
+            model = spacy.load("la_core_web_lg")
             model.max_length = 2500000
 
             class spacy_segmenter:
@@ -303,32 +303,32 @@ class LatinPerseusCorpusReader(CLTKLatinCorpusReaderMixin, PerseusCorpusReader):
         )
 
 
-class CSELCorpusReader(LatinPerseusCorpusReader):
-    """
-    A corpus reader for working Perseus CSEL XML files, inc.
-    cf. https://github.com/OpenGreekAndLatin/csel-dev
+# class CSELCorpusReader(LatinPerseusCorpusReader):
+#     """
+#     A corpus reader for working Perseus CSEL XML files, inc.
+#     cf. https://github.com/OpenGreekAndLatin/csel-dev
 
-    NB: `root` should point to a directory containing the xml files
-    """
+#     NB: `root` should point to a directory containing the xml files
+#     """
 
-    def __init__(
-        self,
-        root: str,
-        fileids: str = r".*\.xml",
-        encoding: str = "utf8",
-        lang="la",
-        ns={"tei": "http://www.tei-c.org/ns/1.0"},
-        nlp="spacy",
-        word_tokenizer: Callable = None,
-        sent_tokenizer: Callable = None,
-        lemmatizer: Callable = None,
-        pos_tagger: Callable = None,
-        **kwargs,
-    ):
+#     def __init__(
+#         self,
+#         root: str,
+#         fileids: str = r".*\.xml",
+#         encoding: str = "utf8",
+#         lang="la",
+#         ns={"tei": "http://www.tei-c.org/ns/1.0"},
+#         nlp="spacy",
+#         word_tokenizer: Callable = None,
+#         sent_tokenizer: Callable = None,
+#         lemmatizer: Callable = None,
+#         pos_tagger: Callable = None,
+#         **kwargs,
+#     ):
 
-        LatinPerseusCorpusReader.__init__(
-            self, root, fileids, encoding=encoding, nlp=nlp, ns=ns
-        )
+#         LatinPerseusCorpusReader.__init__(
+#             self, root, fileids, encoding=encoding, nlp=nlp, ns=ns
+#         )
 
 
 class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusReader):
@@ -467,3 +467,99 @@ class CamenaCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
 
             for para in paras:
                 yield " ".join(para.itertext())
+
+
+class CSELCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
+    """
+    A corpus reader for working with CSEL TEI/XML docs
+    cf. TK
+    """
+
+    def __init__(
+        self,
+        root: str,
+        fileids: str = r".*\.xml",
+        encoding: str = "utf8",
+        lang="la",
+        ns={"tei": "http://www.tei-c.org/ns/1.0"},
+        nlp="spacy",
+        word_tokenizer: Callable = None,
+        sent_tokenizer: Callable = None,
+        lemmatizer: Callable = None,
+        pos_tagger: Callable = None,
+        **kwargs,
+    ):
+
+        LatinPerseusCorpusReader.__init__(
+            self, root, fileids, encoding=encoding, nlp=nlp, ns=ns
+        )
+
+    def _get_xml_encoding_from_file(self, file):
+        with open(file, "rb") as f:
+            return re.search(rb'encoding="(.+?)"', f.read()).group(1).decode()
+
+    def docs(self, fileids: Union[str, list] = None):
+        """
+        Returns the complete text of a .xml file, closing the document after
+        we are done reading it and yielding it in a memory-safe fashion.
+        """
+
+        # Create a generator, loading one document into memory at a time.
+        for path, encoding in self.abspaths(fileids, include_encoding=True):
+            encoding = self._get_xml_encoding_from_file(path)
+            with codecs.open(path, "r", encoding=encoding) as f:
+                doc = f.read()
+                if doc:
+                    x = etree.fromstring(
+                        bytes(doc, encoding="utf-8"),
+                        parser=etree.XMLParser(huge_tree=True),
+                    )
+                    yield etree.tostring(x, pretty_print=True, encoding=str)
+
+    def _format_text(self, text):
+        text = re.sub(r"\n{3,}", "\n", text)
+        text = "\n".join([item.strip() for item in text.split("\n")])
+        return text
+
+    def _format_para(self, para):
+        para = " ".join(para.split())
+        para = para.replace("- ", "")  # Fix hyphenation
+        para = para.replace("\\", "")  # Fix escaping
+        return para
+
+    def paras(self, fileids: Union[str, list] = None):
+        for body in self.bodies(fileids):
+            # Check for lines
+            if body.xpath(".//tei:l", namespaces=self.ns):
+                content = body.xpath(
+                    ".//*[self::tei:title or self::tei:l]", namespaces=self.ns
+                )
+                types = [item.tag.split("}")[1] for item in content]
+                texts = [" ".join(item.itertext()).strip() for item in content]
+                text_types = zip(texts, types)
+
+                paras = []
+                paras_ = []
+
+                for text, text_type in text_types:
+                    if text_type == "title":
+                        if paras_:
+                            paras.append("\n".join(paras_))
+                        paras.append(text)
+                        paras_ = []
+                    else:
+                        paras_.append(text)
+                paras.append("\n".join(paras_))
+
+                for para in paras:
+                    yield para
+
+            else:
+
+                paras = body.xpath(
+                    ".//*[self::tei:title or self::tei:p]", namespaces=self.ns
+                )
+                paras = [self._format_text(" ".join(para.itertext())) for para in paras]
+
+                for para in paras:
+                    yield self._format_para(para)
