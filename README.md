@@ -49,6 +49,7 @@ Version 0.5.5; tested on Python 3.10.8, CLTK 1.1.5; LatinCy 3.5.3
 - [CAMENA (jovanovic fork)](https://github.com/nevenjovanovic/camena-neolatinlit)
 
 ## Change log
+- 0.5.6: Bump spaCy version
 - 0.5.5: Update CSEL reader; Update spaCy dependency to LatinCy [lg model](https://huggingface.co/diyclassics/la_core_web_lg)
 - 0.5.4: Update spaCy dependency to LatinCy [md model](https://huggingface.co/diyclassics/la_core_web_md)
 - 0.5.3: Update spaCy dependency to [md model](https://huggingface.co/diyclassics/la_dep_cltk_md)

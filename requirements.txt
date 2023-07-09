@@ -3,4 +3,4 @@ la-core-web-lg @ https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_c
 lxml==4.9.1
 natsort==8.2.0
 pyuca==1.2
-spacy==3.5.4
+spacy==3.6.0
