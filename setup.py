@@ -6,7 +6,7 @@ from subprocess import getoutput
 
 setup(
     name="cltk_readers",
-    version="0.5.6b",
+    version="0.5.6c",
     packages=["cltkreaders"],
     url="https://github.com/diyclassics/cltk_readers",
     license="MIT License",
@@ -19,7 +19,7 @@ setup(
         "lxml==4.9.1",
         "pyuca==1.2",
         "spacy~=3.6.0",
-        "la_core_web_sm@https://huggingface.co/latincy/la_core_web_sm/resolve/main/la_core_web_sm-any-py3-none-any.whl",
+        "la_core_web_md@https://huggingface.co/latincy/la_core_web_md/resolve/main/la_core_web_md-any-py3-none-any.whl",
     ],
     classifiers=[
         "Development Status :: 1 - Planning",
