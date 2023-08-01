@@ -4,3 +4,4 @@ lxml==4.9.1
 natsort==8.2.0
 pyuca==1.2
 spacy==3.6.0
+textacy==0.13.0

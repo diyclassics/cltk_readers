@@ -8,10 +8,11 @@ __license__ = "MIT License."
 
 import os.path
 import codecs
-from typing import Callable, Iterator, Union
+from typing import Callable, Iterator, Union, List
 
 import re
 from lxml import etree
+from collections import defaultdict
 
 from cltkreaders.readers import CLTKPlaintextCorpusReader
 from cltkreaders.readers import (
@@ -33,6 +34,10 @@ from cltk.utils import get_cltk_data_dir, query_yes_no
 from cltk.data.fetch import FetchCorpus
 from cltk.core.exceptions import CLTKException
 
+import spacy
+from spacy.tokens import Doc, Span, Token
+import textacy
+
 
 class cltk_pos_tagger:
     def __init__(self, lang):
@@ -53,20 +58,22 @@ class cltk_pos_tagger:
 
 
 class CLTKLatinCorpusReaderMixin:
+    """Mixin class for CLTK Latin corpus readers"""
+
     def _setup_latin_tools(self, nlp):
-        if nlp == "spacy":
-
-            import spacy
-
-            model = spacy.load("la_core_web_lg")
-            model.max_length = 2500000
+        if nlp.startswith("la_") and nlp.count("_") == 3:
+            self.model = spacy.load(nlp)
+            self.model.max_length = 2500000
+        elif nlp == "spacy":
+            self.model = spacy.load("la_core_web_lg")
+            self.model.max_length = 2500000
 
             class spacy_segmenter:
                 def __init__(self):
                     pass
 
                 def tokenize(self, doc):
-                    doc = model(doc)
+                    doc = self.model(doc)
                     return [sent for sent in doc.sents]
 
             class spacy_tokenizer:
@@ -75,7 +82,7 @@ class CLTKLatinCorpusReaderMixin:
 
                 def tokenize(self, doc):
                     if isinstance(doc, str):
-                        doc = model(doc)
+                        doc = self.model(doc)
                     return [token for token in doc]
 
             class spacy_lemmatizer:
@@ -186,71 +193,46 @@ class CLTKLatinCorpusReaderMixin:
 
 
 class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader):
-    """
-    A corpus reader for Latin texts from the Tesserae-CLTK corpus
-    """
-
-    def __init__(
-        self,
-        root: str = None,
-        fileids: str = r".*\.tess",
-        encoding: str = "utf-8",
-        lang: str = "lat",
-        nlp: str = "spacy",
-        normalization_form: str = "NFC",
-        word_tokenizer: Callable = None,
-        sent_tokenizer: Callable = None,
-        lemmatizer: Callable = None,
-        pos_tagger: Callable = None,
-        **kwargs,
-    ):
-        """
-        :param root: Location of plaintext files to be read into corpus reader
-        :param fileids: Pattern for matching files to be read into corpus reader
-        :param encoding: Text encoding for associated files; defaults to 'utf-8'
-        :param lang: Allows a language to be selected for language-specific corpus tasks; default is 'lat'
-        :param normalization_form: Normalization form for associated files; defaults to 'NFC'
-        :param kwargs: Miscellaneous keyword arguments
-        """
-        self.lang = lang
+    def __init__(self, nlp=None):
+        self.lang = "lat"
         self.corpus = "lat_text_tesserae"
-        self._root = root
-
+        self._root = self.root
         self.__check_corpus()
-
-        self.nlp = nlp
-        self._setup_latin_tools(self.nlp)
-
-        TesseraeCorpusReader.__init__(
-            self,
-            self.root,
-            fileids,
-            encoding,
-            self.lang,
-            word_tokenizer=self.word_tokenizer,
-            sent_tokenizer=self.sent_tokenizer,
+        super().__init__(
+            root=self._root, fileids=r".*\.tess", encoding="utf-8", lang="lat"
         )
+        if not nlp:
+            self.nlp = "la_core_web_lg"
+        else:
+            self.nlp = "spacy"
+
+        Doc.set_extension("metadata", default=None, force=True)
+        Span.set_extension("sentence_citation", default=False, force=True)
+        Span.set_extension("citation", default=False, force=True)
+        Span.set_extension("metadata", default=None, force=True)
+        Token.set_extension("metadata", default=None, force=True)
+        Token.set_extension("citation", default=False, force=True)
+
+        self._setup_latin_tools(self.nlp)
 
     @property
     def root(self):
-        if not self._root:
-            self._root = os.path.join(
-                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
-            )
-        return self._root
+        return os.path.join(
+            get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
+        )
 
     def __check_corpus(self):
-        if not os.path.isdir(self.root):
-            if self.root != os.path.join(
+        if not os.path.isdir(self._root):
+            if self._root != os.path.join(
                 get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
             ):
                 raise CLTKException(
                     f"Failed to instantiate corpus reader. Root folder not found."
                 )
             else:
-                print(  # pragma: no cover
+                print(
                     f"CLTK message: Unless a path is specifically passed to the 'root' parameter, this corpus reader expects to find the CLTK-Tesserae texts at {f'{self.lang}/text/{self.lang}_text_tesserae/texts'}."
-                )  # pragma: no cover
+                )
                 dl_is_allowed = query_yes_no(
                     f"Do you want to download CLTK-Tesserae Latin files?"
                 )  # type: bool
@@ -262,6 +244,355 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
                     raise CLTKException(
                         f"Failed to instantiate corpus reader. Rerun with 'root' parameter set to folder with corpus files or download the corpus to the CLTK_DATA folder."
                     )
+
+    def fileids(self, match=None, **kwargs):
+        """
+        Return a list of file identifiers for the fileids that make up
+        this corpus.
+        """
+
+        fileids = self._fileids
+
+        if match:
+            fileids = [
+                fileid
+                for fileid in fileids
+                if re.search(match, fileid, flags=re.IGNORECASE)
+            ]
+
+        if kwargs:
+            valid_keys = [list(k.keys()) for k in self._metadata.values()]
+            valid_keys = sorted(
+                list(set([item for sublist in valid_keys for item in sublist]))
+            )
+            for key, value in kwargs.items():
+                value = str(value)
+                if key not in valid_keys and key != "min_date" and key != "max_date":
+                    raise ValueError(
+                        f"Invalid key '{key}'. Valid keys are: {valid_keys}"
+                    )
+                if key != "min_date" and key != "max_date":
+                    fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if metadata.get(key, "").lower() == value.lower()
+                        and fileid in fileids
+                    ]
+
+        if "min_date" in kwargs or "max_date" in kwargs:
+            if "date" in kwargs:
+                print(
+                    "Warning: You can only select min/max dates or a specific date. Using specific date."
+                )
+            else:
+                if "min_date" in kwargs and "max_date" in kwargs:
+                    fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if int(metadata["date"]) >= int(kwargs["min_date"])
+                        and int(metadata["date"]) <= int(kwargs["max_date"])
+                        and fileid in fileids
+                    ]
+                elif "min_date" in kwargs:
+                    fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if int(metadata["date"]) >= int(kwargs["min_date"])
+                        and fileid in fileids
+                    ]
+                elif "max_date" in kwargs:
+                    fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if int(metadata["date"])
+                        <= int(kwargs["max_date"] and fileid in fileids)
+                    ]
+        self._fileids = fileids
+        return self._fileids
+
+    def spacy_docs(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        line_citations: bool = True,
+        sent_citations: bool = True,
+    ) -> Iterator[object]:
+        def make_line_spans(lens: list) -> List[tuple]:
+            spans = []
+            begin = 0
+            for i in range(len(lens)):
+                end = begin + lens[i]
+                spans.append((begin, end))
+                begin = end
+            return spans
+
+        def getIndex(lst: list, num: int) -> int:
+            # cf. https://stackoverflow.com/a/61158780
+            # But +1 for inclusive ranges, i.e. sometimes sentences end on last word of line.
+            for idx, val in enumerate(lst):
+                if num in range(val[0], val[1] + 1):
+                    return idx
+            return -1
+
+        for path, encoding in self.abspaths(fileids, include_encoding=True):
+            current_file = os.path.basename(path)
+
+            with codecs.open(path, "r", encoding=encoding) as f:
+                doc = f.read()
+                doc = doc.strip()
+
+            doc_rows = defaultdict(str)
+
+            # Tesserae files are generally divided such that there are no line breaks within citation sections; there
+            # are exceptions to protect against, i.e. remove \n when not followed by the citation indicator (<)
+            doc = re.sub(r"\n([^<])", r" \g<1>", doc)
+
+            lines = [line for line in doc.split("\n") if line]
+            for line in lines:
+                try:
+                    k, v = line.split(">", 1)
+                    k = f"{k}>"
+                    v = v.strip()
+                    if preprocess:
+                        v = preprocess(v)
+                    v = self.model.make_doc(v)
+                    doc_rows[k] = v
+                except:
+                    print(
+                        f"The following line is not formatted corrected and has been skipped: {line}\n"
+                    )
+
+            # doc_rows = dict(rows)
+
+            citations = list(doc_rows.keys())
+            lines = list(doc_rows.values())
+            lens = [len(line) for line in lines]
+            line_spans = make_line_spans(lens)
+            doc = Doc.from_docs(lines)
+            metadata = self._metadata[current_file]
+            spacy_doc = textacy.make_spacy_doc((doc.text, metadata), lang=self.model)
+
+            if line_citations:
+                spacy_doc.spans["lines"] = [
+                    Span(spacy_doc, span[0], span[1], label="line")
+                    for span in line_spans
+                ]
+                for cit, line in zip(citations, spacy_doc.spans["lines"]):
+                    line._.citation = cit
+                    line._.metadata = spacy_doc._.meta
+
+            if sent_citations:
+                citation_ranges = []
+                citation_ranges_formatted = []
+
+                citation_start = 0
+
+                for sent in spacy_doc.sents:
+                    sent_end = sent.end
+                    citation_end = getIndex(line_spans, sent_end)
+                    citation_ranges.append((citation_start, citation_end))
+                    citation_ranges_formatted.append(
+                        (citations[citation_start], citations[citation_end])
+                    )
+                    if sent_end == line_spans[citation_end][1]:
+                        citation_start = citation_end + 1
+                    else:
+                        citation_start = citation_end
+
+                # Add sentence citations to sents
+                for cit, sent in zip(citation_ranges_formatted, spacy_doc.sents):
+                    sent._.sentence_citation = cit
+                    sent._.metadata = spacy_doc._.meta
+
+            yield spacy_doc
+
+    def lines(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        line_citations: bool = True,
+        sent_citations: bool = True,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+
+        for doc in self.spacy_docs(
+            fileids,
+            preprocess=preprocess,
+            line_citations=line_citations,
+            sent_citations=sent_citations,
+        ):
+            for line in doc.spans["lines"]:
+                if plaintext:
+                    yield line.text
+                else:
+                    yield line
+
+    def doc_rows(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        line_citations: bool = True,
+        sent_citations: bool = True,
+        plaintext: bool = False,
+    ) -> Iterator[dict]:
+        for doc in self.spacy_docs(
+            fileids,
+            preprocess=preprocess,
+            line_citations=line_citations,
+            sent_citations=sent_citations,
+        ):
+            if plaintext:
+                yield {line._.citation: line.text for line in doc.spans["lines"]}
+            else:
+                yield {line._.citation: line for line in doc.spans["lines"]}
+
+    doc_dicts = doc_rows
+
+    def sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        line_citations: bool = True,
+        sent_citations: bool = True,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        for doc in self.spacy_docs(
+            fileids,
+            preprocess=preprocess,
+            line_citations=line_citations,
+            sent_citations=sent_citations,
+        ):
+            for sent in doc.sents:
+                if plaintext:
+                    yield sent.text
+                else:
+                    yield sent
+
+    def tokens(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        line_citations: bool = True,
+        sent_citations: bool = True,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        for line in self.lines(
+            fileids,
+            preprocess=preprocess,
+            line_citations=line_citations,
+            sent_citations=sent_citations,
+            plaintext=False,
+        ):
+            for i, token in enumerate(line):
+                token._.citation = (line._.citation, i)
+                token._.metadata = line._.metadata
+                if plaintext:
+                    yield token.text
+                else:
+                    yield token
+
+    def tokenized_sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        line_citations: bool = True,
+        sent_citations: bool = True,
+    ) -> Iterator[Union[str, object]]:
+        for sent in self.sents(
+            fileids,
+            preprocess=preprocess,
+            line_citations=line_citations,
+            sent_citations=sent_citations,
+            plaintext=False,
+        ):
+            tokenized_sent = []
+            for token in sent:
+                tokenized_sent.append((token.text, token.lemma_, token.pos_))
+            yield tokenized_sent
+
+    def pos_sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        line_citations: bool = True,
+        sent_citations: bool = True,
+    ) -> Iterator[Union[str, object]]:
+        for sent in self.sents(
+            fileids,
+            preprocess=preprocess,
+            line_citations=line_citations,
+            sent_citations=sent_citations,
+            plaintext=False,
+        ):
+            pos_sent = []
+            for token in sent:
+                pos_sent.append("/".join([token.text, token.pos_]))
+            yield pos_sent
+
+    def concordance(
+        self,
+        fileids: Union[str, list] = None,
+        basis: str = "norm",
+        only_alpha: bool = True,
+        preprocess: Callable = None,
+    ) -> dict:
+        concordance_dict = defaultdict(list)
+        for token in self.tokens(fileids, preprocess=preprocess):
+            if only_alpha:
+                if not token.is_alpha:
+                    continue
+            if basis == "norm":
+                concordance_dict[token.norm_].append(token._.citation)
+            elif basis == "lemma":
+                concordance_dict[token.lemma_].append(token._.citation)
+            else:
+                concordance_dict[token.text].append(token._.citation)
+        concordance_dict = {k: v for k, v in sorted(concordance_dict.items())}
+        return concordance_dict
+
+    def chunks(
+        self,
+        fileids: Union[str, list] = None,
+        chunk_size: int = 1000,
+        basis="token",
+        keep_tail: bool = True,
+        preprocess: Callable = None,
+        line_citations: bool = True,
+        sent_citations: bool = True,
+    ) -> Iterator[Union[str, object]]:
+        chunks = []
+        chunk = []
+        counter = 0
+
+        for sent in self.sents(fileids):
+            chunk.append(sent.as_doc())
+            if basis == "char":
+                counter += len(sent.text)
+            else:
+                counter += len(sent)
+
+            if counter > chunk_size:
+                chunks.append(chunk)
+                counter = 0
+                chunk = []
+
+        if len(chunks) == 0:
+            chunks.append(chunk)
+
+        if keep_tail and len(chunks) > 1:
+            chunks.append(chunk)
+            chunks = chunks[:-2] + [chunks[-2] + chunks[-1]]
+        elif len(chunks) > 1:
+            chunks = chunks[:-1]
+        else:
+            pass
+
+        chunks = [Doc.from_docs(chunk) for chunk in chunks]
+
+        for chunk in chunks:
+            # Assigns chunk metadata from the last sent; TODO: Fix so that it works across fileids
+            chunk._.metadata = sent._.metadata
+            yield chunk
 
 
 # TODO: Add corpus download support following Tesserae example
@@ -301,34 +632,6 @@ class LatinPerseusCorpusReader(CLTKLatinCorpusReaderMixin, PerseusCorpusReader):
         PerseusCorpusReader.__init__(
             self, root, fileids, encoding=encoding, nlp=nlp, ns=ns
         )
-
-
-# class CSELCorpusReader(LatinPerseusCorpusReader):
-#     """
-#     A corpus reader for working Perseus CSEL XML files, inc.
-#     cf. https://github.com/OpenGreekAndLatin/csel-dev
-
-#     NB: `root` should point to a directory containing the xml files
-#     """
-
-#     def __init__(
-#         self,
-#         root: str,
-#         fileids: str = r".*\.xml",
-#         encoding: str = "utf8",
-#         lang="la",
-#         ns={"tei": "http://www.tei-c.org/ns/1.0"},
-#         nlp="spacy",
-#         word_tokenizer: Callable = None,
-#         sent_tokenizer: Callable = None,
-#         lemmatizer: Callable = None,
-#         pos_tagger: Callable = None,
-#         **kwargs,
-#     ):
-
-#         LatinPerseusCorpusReader.__init__(
-#             self, root, fileids, encoding=encoding, nlp=nlp, ns=ns
-#         )
 
 
 class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusReader):
