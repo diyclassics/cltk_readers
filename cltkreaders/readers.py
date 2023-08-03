@@ -3,14 +3,16 @@
     Enabling Language-Aware Data Products with Machine Learning. Sebastopol, CA: O’Reilly.
 """
 
-__author__ = ["Patrick J. Burns <patrick@diyclassics.org>",]
+__author__ = [
+    "Patrick J. Burns <patrick@diyclassics.org>",
+]
 __license__ = "MIT License."
 
 import os
 import os.path
 import glob
 import json
-from collections import defaultdict 
+from collections import defaultdict
 import warnings
 import codecs
 import unicodedata
@@ -34,12 +36,13 @@ from cltk.sentence.grc import GreekRegexSentenceTokenizer
 from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
 
 from pyuca import Collator
+
 c = Collator()
 
-class CLTKCorpusReaderMixin():
 
+class CLTKCorpusReaderMixin:
     def load_metadata(self):
-        jsonfiles = glob.glob(f'{self.root}/**/metadata/*.json', recursive=True)
+        jsonfiles = glob.glob(f"{self.root}/**/metadata/*.json", recursive=True)
         jsons = [json.load(open(file)) for file in jsonfiles]
         merged = defaultdict(dict)
         for json_ in jsons:
@@ -56,9 +59,9 @@ class CLTKCorpusReaderMixin():
         if isinstance(fileids, np.ndarray) and not fileids.size:
             fileids = self.fileids()
         elif isinstance(fileids, (list)) and not fileids:
-            fileids = self.fileids()            
+            fileids = self.fileids()
 
-        #TODO: Shouldn't self.fileids() handle str/lst    
+        # TODO: Shouldn't self.fileids() handle str/lst
         if isinstance(fileids, str):
             record = self._metadata.get(fileids, None)
             if record:
@@ -67,9 +70,11 @@ class CLTKCorpusReaderMixin():
                 return None
         else:
             records = [self._metadata.get(fileid, None) for fileid in fileids]
-            label_records = [record.get(label, None) if record else None for record in records]
-            return label_records     
-    
+            label_records = [
+                record.get(label, None) if record else None for record in records
+            ]
+            return label_records
+
     def sizes(self, fileids: Union[list, str] = None) -> Iterator[int]:
         """
         :param fileids: Subset of files to be processed by reader tasks
@@ -91,10 +96,10 @@ class CLTKCorpusReaderMixin():
 
         # Perform single pass over paragraphs, tokenize and count
         for sent in self.sents(fileids):
-            counts['sents'] += 1
+            counts["sents"] += 1
 
         for word in self.words(fileids):
-            counts['words'] += 1
+            counts["words"] += 1
             tokens[word] += 1
 
         # Compute the number of files and categories in the corpus
@@ -107,66 +112,81 @@ class CLTKCorpusReaderMixin():
 
         # Return data structure with information
         return {
-            'files': n_fileids,
-            'sents': counts['sents'],
-            'words': counts['words'],
-            'vocab': len(tokens),
-            'lexdiv': float(counts['words']) / float(len(tokens)),
-            'secs': time.time() - started,
+            "files": n_fileids,
+            "sents": counts["sents"],
+            "words": counts["words"],
+            "vocab": len(tokens),
+            "lexdiv": float(counts["words"]) / float(len(tokens)),
+            "secs": time.time() - started,
         }
 
     def citation(self):
-        citations = glob.glob(f'{self.root}/**/citation.bib', recursive=True)
+        citations = glob.glob(f"{self.root}/**/citation.bib", recursive=True)
         # citations += glob.glob(f'{self.root}/**/CITATION.bib', recursive=True)
 
         citation_full = []
 
         for citation in citations:
-            citation_header = f'Citation for files in folder {os.path.dirname(citation)}'
-            with open(citation, 'r') as f:
+            citation_header = (
+                f"Citation for files in folder {os.path.dirname(citation)}"
+            )
+            with open(citation, "r") as f:
                 citation_text = f.read()
-                citation_full.append(f'{citation_header}\n\n{citation_text}')
-        
-        return '\n\n'.join(citation_full)
+                citation_full.append(f"{citation_header}\n\n{citation_text}")
+
+        return "\n\n".join(citation_full)
 
     def license(self):
-        licenses = [file for file in glob.glob(f'{self.root}/**/*.*',recursive=True) if 'license.txt' in file.lower() or 'license.md' in file.lower()] 
-        
+        licenses = [
+            file
+            for file in glob.glob(f"{self.root}/**/*.*", recursive=True)
+            if "license.txt" in file.lower() or "license.md" in file.lower()
+        ]
+
         license_full = []
 
         for license in licenses:
-            license_header = f'License for files in folder {os.path.dirname(license)}'
-            with open(license, 'r') as f:
+            license_header = f"License for files in folder {os.path.dirname(license)}"
+            with open(license, "r") as f:
                 license_text = f.read()
-                license_full.append(f'{license_header}\n\n{license_text}')
-        
-        return '\n\n'.join(license_full)
+                license_full.append(f"{license_header}\n\n{license_text}")
+
+        return "\n\n".join(license_full)
+
 
 class CLTKPlaintextCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
     """
     Generic corpus reader for plaintext texts
     """
-    def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8', 
-                 normalization_form: str = 'NFC', **kwargs):
-        self._root = root                 
+
+    def __init__(
+        self,
+        root: str,
+        fileids: str = None,
+        encoding: str = "utf-8",
+        normalization_form: str = "NFC",
+        **kwargs,
+    ):
+        # self._root = root
+        print(root)
         self.normalization_form = normalization_form
         self._metadata = self.load_metadata()
-        PlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
+        super().__init__(self, root, fileids, encoding, kwargs)
 
-    def docs(self, fileids: Union[list, str] = None) -> Iterator[str]: 
+    def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
         """
         :param fileids: Subset of files to be processed by reader tasks
         :yield: Plaintext content of file
         """
         for path, encoding in self.abspaths(fileids, include_encoding=True):
-            with codecs.open(path, 'r', encoding=encoding) as f:
+            with codecs.open(path, "r", encoding=encoding) as f:
                 doc = f.read()
                 doc = doc.strip()
                 yield doc
 
     def paras(self, fileids: Union[list, str] = None) -> Iterator[str]:
         for doc in self.docs(fileids):
-            paras = doc.split('\n\n')
+            paras = doc.split("\n\n")
             for para in paras:
                 yield para
 
@@ -176,9 +196,16 @@ class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
     Generic corpus reader for texts from the Tesserae-CLTK corpus
     """
 
-    def __init__(self, root: str, fileids: str = None, encoding: str = 'utf-8', lang: str = None,
-                 
-                 word_tokenizer: Callable = None, sent_tokenizer: Callable = None, **kwargs):
+    def __init__(
+        self,
+        root: str,
+        fileids: str = None,
+        encoding: str = "utf-8",
+        lang: str = None,
+        word_tokenizer: Callable = None,
+        sent_tokenizer: Callable = None,
+        **kwargs,
+    ):
         """
         :param root: Location of plaintext files to be read into corpus reader
         :param fileids: Pattern for matching files to be read into corpus reader
@@ -193,34 +220,42 @@ class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
             self.lang = lang.lower()
 
         if lang is None:
-            if 'greek' in root or 'grc' in root:
-                warnings.warn("lang parameter inferred from document path and set to 'grc'")
-                self.lang = 'grc'
-            elif 'lat' in root:
-                warnings.warn("lang parameter inferred from document path and set to 'lat'")
-                self.lang = 'lat'
+            if "greek" in root or "grc" in root:
+                warnings.warn(
+                    "lang parameter inferred from document path and set to 'grc'"
+                )
+                self.lang = "grc"
+            elif "lat" in root:
+                warnings.warn(
+                    "lang parameter inferred from document path and set to 'lat'"
+                )
+                self.lang = "lat"
             else:
-                raise TypeError("lang parameter in TesseraeCorpusReader must be set to 'greek' or 'latin'")
-        elif lang == 'greek':
-            self.lang = 'grc'
-        elif lang == 'latin':
-            self.lang = 'lat'
+                raise TypeError(
+                    "lang parameter in TesseraeCorpusReader must be set to 'greek' or 'latin'"
+                )
+        elif lang == "greek":
+            self.lang = "grc"
+        elif lang == "latin":
+            self.lang = "lat"
         else:
-            if lang not in ['greek', 'grc', 'latin', 'lat']:
-                raise TypeError("lang parameter in TesseraeCorpusReader must be set to 'grc' or 'lat'")
+            if lang not in ["greek", "grc", "latin", "lat"]:
+                raise TypeError(
+                    "lang parameter in TesseraeCorpusReader must be set to 'grc' or 'lat'"
+                )
 
         if not sent_tokenizer:
-            if self.lang == 'grc':
+            if self.lang == "grc":
                 self.sent_tokenizer = GreekRegexSentenceTokenizer()
-            if self.lang == 'lat':
+            if self.lang == "lat":
                 self.sent_tokenizer = LatinPunktSentenceTokenizer()
 
         if not word_tokenizer:
-            if self.lang == 'grc':
+            if self.lang == "grc":
                 self.word_tokenizer = GreekWordTokenizer()
-            if self.lang == 'lat':
+            if self.lang == "lat":
                 self.word_tokenizer = LatinWordTokenizer()
-        
+
         CLTKPlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
 
     def doc_rows(self, fileids: Union[list, str] = None) -> Iterator[dict]:
@@ -239,42 +274,53 @@ class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
 
             # Tesserae files are generally divided such that there are no line breaks within citation sections; there
             # are exceptions to protect against, i.e. remove \n when not followed by the citation indicator (<)
-            doc = re.sub(r'\n([^<])', r' \g<1>', doc)
+            doc = re.sub(r"\n([^<])", r" \g<1>", doc)
 
-            lines = [line for line in doc.split('\n') if line]
+            lines = [line for line in doc.split("\n") if line]
             for line in lines:
                 try:
-                    k, v = line.split('>', 1)
-                    k = f'{k}>'
+                    k, v = line.split(">", 1)
+                    k = f"{k}>"
                     v = v.strip()
                     rows.append((k, v))
                 except:
-                    print(f'The following line is not formatted corrected and has been skipped: {line}\n')
+                    print(
+                        f"The following line is not formatted corrected and has been skipped: {line}\n"
+                    )
             yield dict(rows)
 
-    def texts(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[str]:
+    def texts(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[str]:
         """
         :param fileids: Subset of files to be processed by reader tasks
         :param preprocess: Allows a preprocessing function to be passed to reader task
         :yield: Plaintext content of Tesserae file with citation information removed
         """
         for doc_row in self.doc_rows(fileids):
-            text = '\n'.join(doc_row.values())
+            text = "\n".join(doc_row.values())
             if preprocess:
                 text = preprocess(text)
             yield text
 
-    def paras(self, fileids: Union[list, str] = None, preprocess: Callable = None, para_threshold: int = 75):
+    def paras(
+        self,
+        fileids: Union[list, str] = None,
+        preprocess: Callable = None,
+        para_threshold: int = 75,
+    ):
         """
-        Tesserae documents (at present) are not marked up to include paragraph divisions; accordingly, 
+        Tesserae documents (at present) are not marked up to include paragraph divisions; accordingly,
         paras are set as equal to `texts` if avg doc_row value len >= para_threshold (assumed to be
         poetry) or otherwise split by doc_row value, i.e. prose section
 
         """
         for text in self.texts(fileids, preprocess=preprocess):
+
             def get_section_lens(section_text):
                 return len(section_text)
-            sections = [section for section in text.split('\n') if section]
+
+            sections = [section for section in text.split("\n") if section]
             sections_lens = [get_section_lens(section) for section in sections]
             sections_mean = sum(sections_lens) / len(sections_lens)
             if sections_mean >= para_threshold:
@@ -284,22 +330,28 @@ class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
             for para in paras:
                 yield para
 
-    def sents(self, fileids: Union[list, str] = None, preprocess: Callable = None,
-              unline: bool = False) -> Iterator[list]:
+    def sents(
+        self,
+        fileids: Union[list, str] = None,
+        preprocess: Callable = None,
+        unline: bool = False,
+    ) -> Iterator[list]:
         """
         TODO: Make abstract class and define in lang-specific modules
         """
         for text in self.texts(fileids):
             sents = self.sent_tokenizer.tokenize(text)
             if unline:
-                sents = [sent.replace('\n', ' ') for sent in sents]
+                sents = [sent.replace("\n", " ") for sent in sents]
             for sent in sents:
                 if preprocess:
                     yield preprocess(sent)
                 else:
                     yield sent
 
-    def words(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+    def words(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[list]:
         """
         TODO: Make abstract class and define in lang-specific modules
         """
@@ -307,8 +359,12 @@ class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
             for token in tokenized_sent:
                 yield token
 
-    def concordance(self, fileids: Union[list, str] = None, preprocess: Callable = None, compiled=False)\
-            -> Iterator[dict]:
+    def concordance(
+        self,
+        fileids: Union[list, str] = None,
+        preprocess: Callable = None,
+        compiled=False,
+    ) -> Iterator[dict]:
         """
         Provides a concordance-style data structure, i.e. dictionary with word as key and list of citation/locations
         as value
@@ -336,32 +392,37 @@ class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
                 for i, token in enumerate(text_tokens):
                     concordance_dict[token].append((citation, i))
             return sorted(concordance_dict.items(), key=lambda x: c.sort_key(x[0]))
-        
+
         if compiled:
             concordance_dict_compiled = defaultdict(list)
             for doc_rows in self.doc_rows(fileids):
                 conc = build_concordance(doc_rows)
                 for token, refs in conc:
                     concordance_dict_compiled[token].extend(refs)
-            yield dict(sorted(concordance_dict_compiled.items(), key=lambda x: c.sort_key(x[0])))
+            yield dict(
+                sorted(
+                    concordance_dict_compiled.items(), key=lambda x: c.sort_key(x[0])
+                )
+            )
         else:
             for doc_rows in self.doc_rows(fileids):
                 yield dict(build_concordance(doc_rows))
-                
+
 
 class TEICorpusReader(XMLCorpusReader):
     """
     A corpus reader for working TEI/XML docs
     """
 
-    def __init__(self, root, fileids: str = r'.*\.xml', encoding='utf8', ns=None, **kwargs):
-        """
-        """
+    def __init__(
+        self, root, fileids: str = r".*\.xml", encoding="utf8", ns=None, **kwargs
+    ):
+        """ """
         XMLCorpusReader.__init__(self, root, fileids)
         # self.ns = {'tei': 'http://www.tei-c.org/ns/1.0'}
         self.ns = ns
 
-    def docs(self,  fileids: Union[str, list] = None):
+    def docs(self, fileids: Union[str, list] = None):
         """
         Returns the complete text of a .xml file, closing the document after
         we are done reading it and yielding it in a memory-safe fashion.
@@ -369,19 +430,22 @@ class TEICorpusReader(XMLCorpusReader):
 
         # Create a generator, loading one document into memory at a time.
         for path, encoding in self.abspaths(fileids, include_encoding=True):
-            with codecs.open(path, 'r', encoding=encoding) as f:
+            with codecs.open(path, "r", encoding=encoding) as f:
                 doc = f.read()
                 if doc:
-                    x = etree.fromstring(bytes(doc, encoding='utf-8'), parser=etree.XMLParser(huge_tree=True))
+                    x = etree.fromstring(
+                        bytes(doc, encoding="utf-8"),
+                        parser=etree.XMLParser(huge_tree=True),
+                    )
                     yield etree.tostring(x, pretty_print=True, encoding=str)
 
     def bodies(self, fileids: Union[str, list] = None):
         for doc in self.docs(fileids):
             root = ET.fromstring(doc)
             if self.ns:
-                body = root.find(f'.//tei:body', self.ns)
+                body = root.find(f".//tei:body", self.ns)
             else:
-                body = root.find(f'.//body')
+                body = root.find(f".//body")
             yield body
 
 
@@ -393,66 +457,89 @@ class PerseusTreebankCorpusReader(TEICorpusReader):
     NB: `root` should point to a directory containing the AGLDT files
     """
 
-    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', **kwargs):
+    def __init__(
+        self, root: str, fileids: str = r".*\.xml", encoding: str = "utf8", **kwargs
+    ):
         TEICorpusReader.__init__(self, root, fileids, encoding=encoding)
 
     def bodies(self, fileids: Union[str, list] = None):
         for doc in self.docs(fileids):
             root = ET.fromstring(doc)
-            body = root.find(f'.//body')
+            body = root.find(f".//body")
             yield body
 
     def paras(self, fileids: Union[str, list] = None):
         for body in self.bodies(fileids):
-            paras = body.findall('.//p')
+            paras = body.findall(".//p")
             # If no paras available, return entire body as a 'para'
             if not paras:
                 paras = [body]
             for para in paras:
-                yield para           
+                yield para
 
     def sents(self, fileids: Union[str, list] = None, plaintext: bool = False):
         for para in self.paras(fileids):
-            sents = para.findall('.//sentence')
+            sents = para.findall(".//sentence")
             for sent in sents:
                 if plaintext:
-                    sent = ' '.join([word.get('form', '') for word in sent.findall('.//word')])
-                    sent = re.sub(r'\[\d+\]', '', sent) # Clean up 'insertion' tokens
+                    sent = " ".join(
+                        [word.get("form", "") for word in sent.findall(".//word")]
+                    )
+                    sent = re.sub(r"\[\d+\]", "", sent)  # Clean up 'insertion' tokens
                 yield sent
 
     def word_data(self, fileids: Union[str, list] = None):
         for sent in self.sents(fileids):
-            words = sent.findall('.//word')
+            words = sent.findall(".//word")
             for word in words:
                 yield word
 
     def words(self, fileids: Union[str, list] = None):
         for word in self.word_data(fileids):
-            yield word.get('form', None)
-    
+            yield word.get("form", None)
+
     def tokenized_sents(self, fileids=None, simple_pos: bool = True):
         for para in self.paras(fileids):
-            sents = para.findall('.//sentence')
+            sents = para.findall(".//sentence")
             for sent in sents:
                 tokenized_sent = []
-                words = sent.findall('.//word')
+                words = sent.findall(".//word")
                 for word in words:
-                    token = word.get('form', None)
-                    lemma = word.get('lemma', None)
-                    postag = word.get('postag', None)
+                    token = word.get("form", None)
+                    lemma = word.get("lemma", None)
+                    postag = word.get("postag", None)
                     if simple_pos and postag:
-                        postag = postag[0].upper() # TODO: Write tag map?
+                        postag = postag[0].upper()  # TODO: Write tag map?
                     tokenized_sent.append((token, lemma, postag))
-                yield tokenized_sent                
+                yield tokenized_sent
 
 
 class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
     """
     Generic corpus reader for texts from the UD treebanks
     """
-    def __init__(self, root: str, fileids: str = r'.*\.conllu', 
-                 columns: list = ['ID', 'FORM', 'LEMMA', 'UPOS', 'XPOS', 'FEATS', 'HEAD', 'DEPREL', 'DEPS', 'MISC'], 
-                 encoding: str = 'utf-8', lang: str = None, normalization_form: str = 'NFC', **kwargs):
+
+    def __init__(
+        self,
+        root: str,
+        fileids: str = r".*\.conllu",
+        columns: list = [
+            "ID",
+            "FORM",
+            "LEMMA",
+            "UPOS",
+            "XPOS",
+            "FEATS",
+            "HEAD",
+            "DEPREL",
+            "DEPS",
+            "MISC",
+        ],
+        encoding: str = "utf-8",
+        lang: str = None,
+        normalization_form: str = "NFC",
+        **kwargs,
+    ):
         """
         :param root: Location of conllu files to be read into corpus reader
         :param fileids: Pattern for matching files to be read into corpus reader
@@ -473,13 +560,13 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
         :yield: Plaintext content of UD file
         """
         for path, encoding in self.abspaths(fileids, include_encoding=True):
-            with codecs.open(path, 'r', encoding=encoding) as f:
+            with codecs.open(path, "r", encoding=encoding) as f:
                 doc = f.read()
                 doc = unicodedata.normalize(self.normalization_form, doc)
                 doc = doc.strip()
                 yield doc
-    
-    texts = docs # alias for docs
+
+    texts = docs  # alias for docs
 
     def paras(self, fileids: Union[list, str] = None):
         """
@@ -490,69 +577,81 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
     def sent_blocks(self, fileids: Union[list, str] = None) -> Iterator[str]:
         """
         :param fileids: Subset of files to be processed by reader tasks
-        :return: Sentence-level blocks of text in UD files 
+        :return: Sentence-level blocks of text in UD files
         """
         for doc in self.docs(fileids):
-            sent_blocks_ = doc.split('\n\n')
+            sent_blocks_ = doc.split("\n\n")
             for sent_block in sent_blocks_:
                 yield sent_block
 
     def sent_dicts(self, fileids: Union[list, str] = None) -> Iterator[str]:
         """
         :param fileids: Subset of files to be processed by reader tasks
-        :return: Sentence-level blocks divided as dictionaries with columnar data 
-        """        
+        :return: Sentence-level blocks divided as dictionaries with columnar data
+        """
         for sent_block in self.sent_blocks(fileids):
-            sent_lines = sent_block.split('\n')
-            data_lines = [line.split('\t') for line in sent_lines if not line.startswith('#') and line]
+            sent_lines = sent_block.split("\n")
+            data_lines = [
+                line.split("\t")
+                for line in sent_lines
+                if not line.startswith("#") and line
+            ]
             sent_dicts_ = []
             for data_line in data_lines:
                 data_line_ = {k: v for k, v in zip(self.columns, data_line)}
                 sent_dicts_.append(data_line_)
             yield sent_dicts_
 
-    def sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+    def sents(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[list]:
         """
         :param fileids: Subset of files to be processed by reader tasks
         :param preprocess: Allows a preprocessing function to be passed to reader task
         :yield: List of sentences from Tesserae documents
-        """        
+        """
         for sent_block in self.sent_blocks(fileids):
-            for row in sent_block.split('\n'):
-                if row.startswith('# text = '):
-                    sent = row.replace('# text = ', '')
+            for row in sent_block.split("\n"):
+                if row.startswith("# text = "):
+                    sent = row.replace("# text = ", "")
                     if preprocess:
                         yield preprocess(sent)
                     else:
                         yield sent
 
-    def tokenized_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+    def tokenized_sents(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[list]:
         """
         :param fileids: Subset of files to be processed by reader tasks
         :param preprocess: Allows a preprocessing function to be passed to reader task
         :yield: List of words from UD documents
         """
         for sent in self.sent_dicts(fileids):
-            tokenized_sent = [item['FORM'] for item in sent]
+            tokenized_sent = [item["FORM"] for item in sent]
             if preprocess:
                 yield preprocess(" ".join(tokenized_sent)).split()
             else:
                 yield tokenized_sent
 
-    def lemmatized_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+    def lemmatized_sents(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[list]:
         """
         :param fileids: Subset of files to be processed by reader tasks
         :param preprocess: Allows a preprocessing function to be passed to reader task
         :yield: List of words from UD documents
         """
         for sent in self.sent_dicts(fileids):
-            tokenized_sent = [item['LEMMA'] for item in sent]
+            tokenized_sent = [item["LEMMA"] for item in sent]
             if preprocess:
                 yield preprocess(" ".join(tokenized_sent)).split()
             else:
-                yield tokenized_sent                
+                yield tokenized_sent
 
-    def words(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+    def words(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[list]:
         """
         :param fileids: Subset of files to be processed by reader tasks
         :param preprocess: Allows a preprocessing function to be passed to reader task
@@ -562,7 +661,9 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
             for token in tokenized_sent:
                 yield token
 
-    def lemmas(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+    def lemmas(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[list]:
         """
         :param fileids: Subset of files to be processed by reader tasks
         :param preprocess: Allows a preprocessing function to be passed to reader task
@@ -572,7 +673,9 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
             for lemma in lemmatized_sent:
                 yield lemma
 
-    def pos_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
+    def pos_sents(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[list]:
         """
         :param fileids: Subset of files to be processed by reader tasks
         :param preprocess: Allows a preprocessing function to be passed to reader task
@@ -580,22 +683,25 @@ class UDCorpusReader(CLTKCorpusReaderMixin, CorpusReader):
         """
         for sent in self.sent_dicts(fileids):
             # pos_sent = [f'{item["FORM"]}/{item["UPOS"]}' for item in sent]
-            tokenized_sent = [item['FORM'] for item in sent]
-            pos_sent = [item['UPOS'] for item in sent]
+            tokenized_sent = [item["FORM"] for item in sent]
+            pos_sent = [item["UPOS"] for item in sent]
             if preprocess:
-                tokenized_sent = [preprocess(token).replace(' ','') for token in tokenized_sent]
+                tokenized_sent = [
+                    preprocess(token).replace(" ", "") for token in tokenized_sent
+                ]
             pos_sent = zip(tokenized_sent, pos_sent)
             pos_sent = [f"{item[0]}/{item[1]}" for item in pos_sent if item[0]]
             yield pos_sent
 
-    def annotated_sents(self, fileids: Union[list, str] = None, preprocess: Callable = None) -> Iterator[list]:
-        """
-        """
+    def annotated_sents(
+        self, fileids: Union[list, str] = None, preprocess: Callable = None
+    ) -> Iterator[list]:
+        """ """
         for sent in self.sent_dicts(fileids):
-            token_sent = [item['FORM'] for item in sent]
-            lemma_sent = [item['LEMMA'] for item in sent]
-            pos_sent = [item['UPOS'] for item in sent]
-            
+            token_sent = [item["FORM"] for item in sent]
+            lemma_sent = [item["LEMMA"] for item in sent]
+            pos_sent = [item["UPOS"] for item in sent]
+
             if preprocess:
                 token_sent = [preprocess(token) for token in token_sent]
                 lemma_sent = [preprocess(lemma) for lemma in lemma_sent]
@@ -609,7 +715,15 @@ class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
     A corpus reader for working Perseus XML files, inc.
     """
 
-    def __init__(self, root: str, fileids: str = r'.*\.xml', encoding: str = 'utf8', ns=None, nlp=None, **kwargs):
+    def __init__(
+        self,
+        root: str,
+        fileids: str = r".*\.xml",
+        encoding: str = "utf8",
+        ns=None,
+        nlp=None,
+        **kwargs,
+    ):
         self._root = root
         self._metadata = self.load_metadata()
         self.ns = ns
@@ -619,9 +733,9 @@ class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
         for doc in self.docs(fileids):
             root = etree.fromstring(doc, parser=etree.XMLParser(huge_tree=True))
             if self.ns:
-                header = root.find('.//tei:teiHeader', self.ns)
+                header = root.find(".//tei:teiHeader", self.ns)
             else:
-                header = root.find('.//teiHeader')
+                header = root.find(".//teiHeader")
             yield header
 
     def bodies(self, fileids: Union[str, list] = None):
@@ -629,33 +743,33 @@ class PerseusCorpusReader(CLTKCorpusReaderMixin, TEICorpusReader):
 
         for doc in self.docs(fileids):
             root = etree.fromstring(doc)
-            
+
             # Remove `note` elements; see above
             if self.ns:
-                notes = root.iterfind('.//tei:note', self.ns)
+                notes = root.iterfind(".//tei:note", self.ns)
             else:
-                notes = root.iterfind('.//note')           
+                notes = root.iterfind(".//note")
             if notes:
-                for note in notes: 
+                for note in notes:
                     note.getparent().remove(note)
-            
+
             if self.ns:
-                body = root.find(f'.//tei:body', self.ns)
+                body = root.find(f".//tei:body", self.ns)
             else:
-                body = root.find(f'.//body')
+                body = root.find(f".//body")
 
             yield body
 
     def paras(self, fileids: Union[str, list] = None):
         for body in self.bodies(fileids):
             if self.ns:
-                paras = body.findall(f'.//tei:p', self.ns)
+                paras = body.findall(f".//tei:p", self.ns)
             else:
-                paras = body.findall('.//p')
-            
+                paras = body.findall(".//p")
+
             # If no paras available, return entire body as a 'para'
             if paras is None:
                 paras = [body]
-            
+
             for para in paras:
-                yield ' '.join(para.itertext())                   
+                yield " ".join(para.itertext())

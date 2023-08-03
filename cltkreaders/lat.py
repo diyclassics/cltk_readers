@@ -60,6 +60,71 @@ class cltk_pos_tagger:
 class CLTKLatinCorpusReaderMixin:
     """Mixin class for CLTK Latin corpus readers"""
 
+    def fileids(self, match=None, **kwargs):
+        """
+        Return a list of file identifiers for the fileids that make up
+        this corpus.
+        """
+
+        fileids = self._fileids
+
+        if match:
+            fileids = [
+                fileid
+                for fileid in fileids
+                if re.search(match, fileid, flags=re.IGNORECASE)
+            ]
+
+        if kwargs:
+            valid_keys = [list(k.keys()) for k in self._metadata.values()]
+            valid_keys = sorted(
+                list(set([item for sublist in valid_keys for item in sublist]))
+            )
+            for key, value in kwargs.items():
+                value = str(value)
+                if key not in valid_keys and key != "min_date" and key != "max_date":
+                    raise ValueError(
+                        f"Invalid key '{key}'. Valid keys are: {valid_keys}"
+                    )
+                if key != "min_date" and key != "max_date":
+                    fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if metadata.get(key, "").lower() == value.lower()
+                        and fileid in fileids
+                    ]
+
+        if "min_date" in kwargs or "max_date" in kwargs:
+            if "date" in kwargs:
+                print(
+                    "Warning: You can only select min/max dates or a specific date. Using specific date."
+                )
+            else:
+                if "min_date" in kwargs and "max_date" in kwargs:
+                    fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if int(metadata["date"]) >= int(kwargs["min_date"])
+                        and int(metadata["date"]) <= int(kwargs["max_date"])
+                        and fileid in fileids
+                    ]
+                elif "min_date" in kwargs:
+                    fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if int(metadata["date"]) >= int(kwargs["min_date"])
+                        and fileid in fileids
+                    ]
+                elif "max_date" in kwargs:
+                    fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if int(metadata["date"])
+                        <= int(kwargs["max_date"] and fileid in fileids)
+                    ]
+        self._fileids = fileids
+        return self._fileids
+
     def _setup_latin_tools(self, nlp):
         if nlp.startswith("la_") and nlp.count("_") == 3:
             self.model = spacy.load(nlp)
@@ -639,45 +704,26 @@ class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusRe
     A corpus reader for Latin texts from the Latin Library
     """
 
-    def __init__(
-        self,
-        root: str = None,
-        fileids: str = r".*\.txt",
-        encoding: str = "utf-8",
-        lang: str = "lat",
-        nlp: str = "spacy",
-        normalization_form: str = "NFC",
-        word_tokenizer: Callable = None,
-        sent_tokenizer: Callable = None,
-        lemmatizer: Callable = None,
-        pos_tagger: Callable = None,
-        **kwargs,
-    ):
-        self.lang = lang
+    def __init__(self, nlp=None):
+        # self.fileids = r".*\.txt"
+        self.lang = "lat"
         self.corpus = "lat_text_latin_library"
-        self._root = root
-
         self.__check_corpus()
+        CLTKPlaintextCorpusReader.__init__(self, self.root, r".*\.txt", "utf8")
 
-        self.word_tokenizer = word_tokenizer
-        self.sent_tokenizer = sent_tokenizer
-        self.lemmatizer = lemmatizer
-        self.pos_tagger = pos_tagger
+        if not nlp:
+            self.nlp = "la_core_web_lg"
+        else:
+            self.nlp = "spacy"
 
-        self.nlp = nlp
+        Doc.set_extension("metadata", default=None, force=True)
+        Span.set_extension("metadata", default=None, force=True)
+        Token.set_extension("metadata", default=None, force=True)
         self._setup_latin_tools(self.nlp)
-
-        CLTKPlaintextCorpusReader.__init__(
-            self, self.root, fileids, encoding, self.lang
-        )
 
     @property
     def root(self):
-        if not self._root:
-            self._root = os.path.join(
-                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}"
-            )
-        return self._root
+        return os.path.join(get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}")
 
     def __check_corpus(self):
         if not os.path.isdir(self.root):
@@ -702,6 +748,140 @@ class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusRe
                     raise CLTKException(
                         f"Failed to instantiate corpus reader. Rerun with 'root' parameter set to folder with corpus files or download the corpus to the CLTK_DATA folder."
                     )
+
+    def spacy_docs(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+    ) -> Iterator[object]:
+        print(fileids)
+        for i, (path, encoding) in enumerate(
+            self.abspaths(fileids, include_encoding=True)
+        ):
+            if isinstance(fileids, str):
+                current_file = fileids
+            else:
+                current_file = fileids[i]
+
+            with codecs.open(path, "r", encoding=encoding) as f:
+                doc = f.read()
+                doc = doc.strip()
+
+            # Paragraphize doc spacing
+            doc = "\n".join(
+                [para.strip() for para in doc.split("\n\n") if para.strip()]
+            )
+
+            metadata = self._metadata[current_file]
+            spacy_doc = textacy.make_spacy_doc((doc, metadata), lang=self.model)
+            yield spacy_doc
+
+    def sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        for doc in self.spacy_docs(
+            fileids,
+            preprocess=preprocess,
+        ):
+            for sent in doc.sents:
+                sent._.metadata = doc._.meta
+                if plaintext:
+                    yield sent.text
+                else:
+                    yield sent
+
+    def tokens(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        for sent in self.sents(
+            fileids,
+            preprocess=preprocess,
+            plaintext=False,
+        ):
+            for i, token in enumerate(sent):
+                token._.metadata = sent._.metadata
+                if plaintext:
+                    yield token.text
+                else:
+                    yield token
+
+    def tokenized_sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+    ) -> Iterator[Union[str, object]]:
+        for sent in self.sents(
+            fileids,
+            preprocess=preprocess,
+            plaintext=False,
+        ):
+            tokenized_sent = []
+            for token in sent:
+                tokenized_sent.append((token.text, token.lemma_, token.pos_))
+            yield tokenized_sent
+
+    def pos_sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+    ) -> Iterator[Union[str, object]]:
+        for sent in self.sents(
+            fileids,
+            preprocess=preprocess,
+            plaintext=False,
+        ):
+            pos_sent = []
+            for token in sent:
+                pos_sent.append("/".join([token.text, token.pos_]))
+            yield pos_sent
+
+    def chunks(
+        self,
+        fileids: Union[str, list] = None,
+        chunk_size: int = 1000,
+        basis="token",
+        keep_tail: bool = True,
+        preprocess: Callable = None,
+    ) -> Iterator[Union[str, object]]:
+        chunks = []
+        chunk = []
+        counter = 0
+
+        for sent in self.sents(fileids):
+            chunk.append(sent.as_doc())
+            if basis == "char":
+                counter += len(sent.text)
+            else:
+                counter += len(sent)
+
+            if counter > chunk_size:
+                chunks.append(chunk)
+                counter = 0
+                chunk = []
+
+        if len(chunks) == 0:
+            chunks.append(chunk)
+
+        if keep_tail and len(chunks) > 1:
+            chunks.append(chunk)
+            chunks = chunks[:-2] + [chunks[-2] + chunks[-1]]
+        elif len(chunks) > 1:
+            chunks = chunks[:-1]
+        else:
+            pass
+
+        chunks = [Doc.from_docs(chunk) for chunk in chunks]
+
+        for chunk in chunks:
+            # Assigns chunk metadata from the last sent; TODO: Fix so that it works across fileids
+            chunk._.metadata = sent._.metadata
+            yield chunk
 
 
 class CamenaCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
