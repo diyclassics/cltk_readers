@@ -749,6 +749,17 @@ class LatinPlaintextCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpus
             spacy_doc = textacy.make_spacy_doc((doc, metadata), lang=self.model)
             yield spacy_doc
 
+    def texts(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+    ) -> Iterator[Union[str, object]]:
+        for doc in self.spacy_docs(
+            fileids,
+            preprocess=preprocess,
+        ):
+            yield doc.text
+
     def sents(
         self,
         fileids: Union[str, list] = None,
