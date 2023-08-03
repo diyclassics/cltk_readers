@@ -167,11 +167,9 @@ class CLTKPlaintextCorpusReader(CLTKCorpusReaderMixin, PlaintextCorpusReader):
         normalization_form: str = "NFC",
         **kwargs,
     ):
-        # self._root = root
-        print(root)
         self.normalization_form = normalization_form
         self._metadata = self.load_metadata()
-        super().__init__(self, root, fileids, encoding, kwargs)
+        PlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
 
     def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
         """

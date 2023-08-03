@@ -699,17 +699,16 @@ class LatinPerseusCorpusReader(CLTKLatinCorpusReaderMixin, PerseusCorpusReader):
         )
 
 
-class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusReader):
+class LatinPlaintextCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusReader):
     """
     A corpus reader for Latin texts from the Latin Library
     """
 
-    def __init__(self, nlp=None):
-        # self.fileids = r".*\.txt"
-        self.lang = "lat"
-        self.corpus = "lat_text_latin_library"
-        self.__check_corpus()
-        CLTKPlaintextCorpusReader.__init__(self, self.root, r".*\.txt", "utf8")
+    def __init__(
+        self, root=None, fileids=r".*\.txt", encoding="utf8", lang="lat", nlp=None
+    ):
+        self._root = root
+        self.lang = lang
 
         if not nlp:
             self.nlp = "la_core_web_lg"
@@ -720,41 +719,15 @@ class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusRe
         Span.set_extension("metadata", default=None, force=True)
         Token.set_extension("metadata", default=None, force=True)
         self._setup_latin_tools(self.nlp)
-
-    @property
-    def root(self):
-        return os.path.join(get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}")
-
-    def __check_corpus(self):
-        if not os.path.isdir(self.root):
-            if self.root != os.path.join(
-                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}"
-            ):
-                raise CLTKException(
-                    f"Failed to instantiate corpus reader. Root folder not found."
-                )
-            else:
-                print(  # pragma: no cover
-                    f"CLTK message: Unless a path is specifically passed to the 'root' parameter, this corpus reader expects to find the files at {f'{self.lang}/text/{self.lang}_text_latin_library'}."
-                )  # pragma: no cover
-                dl_is_allowed = query_yes_no(
-                    f"Do you want to download {self.corpus} corpus files?"
-                )  # type: bool
-                if dl_is_allowed:
-                    fetch_corpus = FetchCorpus(language=self.lang)
-                    fetch_corpus.import_corpus(corpus_name=self.corpus)
-                    fetch_corpus.import_corpus(corpus_name=f"{self.lang}_models_cltk")
-                else:
-                    raise CLTKException(
-                        f"Failed to instantiate corpus reader. Rerun with 'root' parameter set to folder with corpus files or download the corpus to the CLTK_DATA folder."
-                    )
+        CLTKPlaintextCorpusReader.__init__(self, root, fileids, encoding)
 
     def spacy_docs(
         self,
         fileids: Union[str, list] = None,
         preprocess: Callable = None,
     ) -> Iterator[object]:
-        print(fileids)
+        if not fileids:
+            fileids = self.fileids()
         for i, (path, encoding) in enumerate(
             self.abspaths(fileids, include_encoding=True)
         ):
@@ -882,6 +855,52 @@ class LatinLibraryCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusRe
             # Assigns chunk metadata from the last sent; TODO: Fix so that it works across fileids
             chunk._.metadata = sent._.metadata
             yield chunk
+
+
+class LatinLibraryCorpusReader(LatinPlaintextCorpusReader):
+    """
+    A corpus reader for Latin texts from the Latin Library
+    """
+
+    def __init__(self, nlp=None):
+        self.lang = "lat"
+        self.corpus = "lat_text_latin_library"
+        self.__check_corpus()
+
+        if not nlp:
+            self.nlp = "la_core_web_lg"
+        else:
+            self.nlp = "spacy"
+
+        CLTKPlaintextCorpusReader.__init__(self, self.root, r".*\.txt", "utf8")
+
+    @property
+    def root(self):
+        return os.path.join(get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}")
+
+    def __check_corpus(self):
+        if not os.path.isdir(self.root):
+            if self.root != os.path.join(
+                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}"
+            ):
+                raise CLTKException(
+                    f"Failed to instantiate corpus reader. Root folder not found."
+                )
+            else:
+                print(  # pragma: no cover
+                    f"CLTK message: Unless a path is specifically passed to the 'root' parameter, this corpus reader expects to find the files at {f'{self.lang}/text/{self.lang}_text_latin_library'}."
+                )  # pragma: no cover
+                dl_is_allowed = query_yes_no(
+                    f"Do you want to download {self.corpus} corpus files?"
+                )  # type: bool
+                if dl_is_allowed:
+                    fetch_corpus = FetchCorpus(language=self.lang)
+                    fetch_corpus.import_corpus(corpus_name=self.corpus)
+                    fetch_corpus.import_corpus(corpus_name=f"{self.lang}_models_cltk")
+                else:
+                    raise CLTKException(
+                        f"Failed to instantiate corpus reader. Rerun with 'root' parameter set to folder with corpus files or download the corpus to the CLTK_DATA folder."
+                    )
 
 
 class CamenaCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
