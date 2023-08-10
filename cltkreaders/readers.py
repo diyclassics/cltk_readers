@@ -100,7 +100,7 @@ class CLTKCorpusReaderMixin:
 
         for word in self.words(fileids):
             counts["words"] += 1
-            tokens[word] += 1
+            tokens[word.text] += 1
 
         # Compute the number of files and categories in the corpus
         if isinstance(fileids, str):
