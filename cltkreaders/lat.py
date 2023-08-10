@@ -38,6 +38,8 @@ import spacy
 from spacy.tokens import Doc, Span, Token
 import textacy
 
+from natsort import natsorted
+
 
 class cltk_pos_tagger:
     def __init__(self, lang):
@@ -68,12 +70,15 @@ class CLTKLatinCorpusReaderMixin:
 
         fileids = self._fileids
 
+        facets = []
+
         if match:
-            fileids = [
+            match_fileids = [
                 fileid
                 for fileid in fileids
                 if re.search(match, fileid, flags=re.IGNORECASE)
             ]
+            facets.append(match_fileids)
 
         if kwargs:
             valid_keys = [list(k.keys()) for k in self._metadata.values()]
@@ -87,12 +92,12 @@ class CLTKLatinCorpusReaderMixin:
                         f"Invalid key '{key}'. Valid keys are: {valid_keys}"
                     )
                 if key != "min_date" and key != "max_date":
-                    fileids = [
+                    kwargs_fileids = [
                         fileid
                         for fileid, metadata in self._metadata.items()
                         if metadata.get(key, "").lower() == value.lower()
-                        and fileid in fileids
                     ]
+                    facets.append(kwargs_fileids)
 
         if "min_date" in kwargs or "max_date" in kwargs:
             if "date" in kwargs:
@@ -101,29 +106,30 @@ class CLTKLatinCorpusReaderMixin:
                 )
             else:
                 if "min_date" in kwargs and "max_date" in kwargs:
-                    fileids = [
+                    date_fileids = [
                         fileid
                         for fileid, metadata in self._metadata.items()
                         if int(metadata["date"]) >= int(kwargs["min_date"])
                         and int(metadata["date"]) <= int(kwargs["max_date"])
-                        and fileid in fileids
                     ]
                 elif "min_date" in kwargs:
-                    fileids = [
+                    date_fileids = [
                         fileid
                         for fileid, metadata in self._metadata.items()
                         if int(metadata["date"]) >= int(kwargs["min_date"])
-                        and fileid in fileids
                     ]
                 elif "max_date" in kwargs:
-                    fileids = [
+                    date_fileids = [
                         fileid
                         for fileid, metadata in self._metadata.items()
-                        if int(metadata["date"])
-                        <= int(kwargs["max_date"] and fileid in fileids)
+                        if int(metadata["date"]) <= int(kwargs["max_date"])
                     ]
-        self._fileids = fileids
-        return self._fileids
+                facets.append(date_fileids)
+
+        if facets:
+            fileids = natsorted(list(set.intersection(*map(set, facets))))
+
+        return fileids
 
     def _setup_latin_tools(self, nlp):
         if nlp.startswith("la_") and nlp.count("_") == 3:
@@ -310,71 +316,6 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
                         f"Failed to instantiate corpus reader. Rerun with 'root' parameter set to folder with corpus files or download the corpus to the CLTK_DATA folder."
                     )
 
-    def fileids(self, match=None, **kwargs):
-        """
-        Return a list of file identifiers for the fileids that make up
-        this corpus.
-        """
-
-        fileids = self._fileids
-
-        if match:
-            fileids = [
-                fileid
-                for fileid in fileids
-                if re.search(match, fileid, flags=re.IGNORECASE)
-            ]
-
-        if kwargs:
-            valid_keys = [list(k.keys()) for k in self._metadata.values()]
-            valid_keys = sorted(
-                list(set([item for sublist in valid_keys for item in sublist]))
-            )
-            for key, value in kwargs.items():
-                value = str(value)
-                if key not in valid_keys and key != "min_date" and key != "max_date":
-                    raise ValueError(
-                        f"Invalid key '{key}'. Valid keys are: {valid_keys}"
-                    )
-                if key != "min_date" and key != "max_date":
-                    fileids = [
-                        fileid
-                        for fileid, metadata in self._metadata.items()
-                        if metadata.get(key, "").lower() == value.lower()
-                        and fileid in fileids
-                    ]
-
-        if "min_date" in kwargs or "max_date" in kwargs:
-            if "date" in kwargs:
-                print(
-                    "Warning: You can only select min/max dates or a specific date. Using specific date."
-                )
-            else:
-                if "min_date" in kwargs and "max_date" in kwargs:
-                    fileids = [
-                        fileid
-                        for fileid, metadata in self._metadata.items()
-                        if int(metadata["date"]) >= int(kwargs["min_date"])
-                        and int(metadata["date"]) <= int(kwargs["max_date"])
-                        and fileid in fileids
-                    ]
-                elif "min_date" in kwargs:
-                    fileids = [
-                        fileid
-                        for fileid, metadata in self._metadata.items()
-                        if int(metadata["date"]) >= int(kwargs["min_date"])
-                        and fileid in fileids
-                    ]
-                elif "max_date" in kwargs:
-                    fileids = [
-                        fileid
-                        for fileid, metadata in self._metadata.items()
-                        if int(metadata["date"])
-                        <= int(kwargs["max_date"] and fileid in fileids)
-                    ]
-        self._fileids = fileids
-        return self._fileids
-
     def spacy_docs(
         self,
         fileids: Union[str, list] = None,
@@ -471,6 +412,10 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
 
             yield spacy_doc
 
+    def texts(self, fileids: Union[str, list] = None) -> Iterator[str]:
+        for doc in self.spacy_docs(fileids):
+            yield doc.text
+
     def lines(
         self,
         fileids: Union[str, list] = None,
@@ -512,6 +457,16 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
                 yield {line._.citation: line for line in doc.spans["lines"]}
 
     doc_dicts = doc_rows
+
+    def paras(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        line_citations: bool = True,
+        sent_citations: bool = True,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        raise NotImplementedError
 
     def sents(
         self,
@@ -556,12 +511,15 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
                 else:
                     yield token
 
+    words = tokens
+
     def tokenized_sents(
         self,
         fileids: Union[str, list] = None,
         preprocess: Callable = None,
         line_citations: bool = True,
         sent_citations: bool = True,
+        simple=False,
     ) -> Iterator[Union[str, object]]:
         for sent in self.sents(
             fileids,
@@ -572,7 +530,10 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         ):
             tokenized_sent = []
             for token in sent:
-                tokenized_sent.append((token.text, token.lemma_, token.pos_))
+                if simple:
+                    tokenized_sent.append(token.text)
+                else:
+                    tokenized_sent.append((token.text, token.lemma_, token.pos_))
             yield tokenized_sent
 
     def pos_sents(
