@@ -640,14 +640,13 @@ class LatinPerseusCorpusReader(CLTKLatinCorpusReaderMixin, PerseusCorpusReader):
         encoding: str = "utf8",
         ns=None,
         lang="la",
-        nlp="spacy",
+        nlp="la_core_web_lg",
         word_tokenizer: Callable = None,
         sent_tokenizer: Callable = None,
         lemmatizer: Callable = None,
         pos_tagger: Callable = None,
         **kwargs,
     ):
-
         self.word_tokenizer = word_tokenizer
         self.sent_tokenizer = sent_tokenizer
         self.lemmatizer = lemmatizer
@@ -658,6 +657,116 @@ class LatinPerseusCorpusReader(CLTKLatinCorpusReaderMixin, PerseusCorpusReader):
         PerseusCorpusReader.__init__(
             self, root, fileids, encoding=encoding, nlp=nlp, ns=ns
         )
+
+    def spacy_docs(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        unline: bool = False,
+    ) -> Iterator[object]:
+        for body in self.bodies(fileids):
+            if self.ns:
+                paras = body.findall(f".//tei:p", self.ns)
+            else:
+                paras = body.findall(".//p")
+            # If no paras available, return entire body as a 'para'
+            if not paras:
+                paras = [body]
+
+            paras_text = []
+            for para in paras:
+                para_text = " ".join(para.itertext())
+                if preprocess:
+                    para_text = preprocess(para_text)
+                paras_text.append(para_text)
+
+            paras_text = "\n\n".join(paras_text)
+
+            if unline:
+                paras_text = " ".join(paras_text.split()).strip()
+
+            spacy_doc = self.model(paras_text)
+
+            yield spacy_doc
+
+    def paras(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        raise NotImplementedError
+
+    def sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        unline: bool = True,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        for doc in self.spacy_docs(
+            fileids,
+            preprocess=preprocess,
+            unline=unline,
+        ):
+            for sent in doc.sents:
+                if plaintext:
+                    yield sent.text
+                else:
+                    yield sent
+
+    def tokens(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        for line in self.lines(
+            fileids,
+            preprocess=preprocess,
+            plaintext=False,
+        ):
+            for token in line:
+                if plaintext:
+                    yield token.text
+                else:
+                    yield token
+
+    words = tokens
+
+    def tokenized_sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        simple=False,
+    ) -> Iterator[Union[str, object]]:
+        for sent in self.sents(
+            fileids,
+            preprocess=preprocess,
+            plaintext=False,
+        ):
+            tokenized_sent = []
+            for token in sent:
+                if simple:
+                    tokenized_sent.append(token.text)
+                else:
+                    tokenized_sent.append((token.text, token.lemma_, token.pos_))
+            yield tokenized_sent
+
+    def pos_sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+    ) -> Iterator[Union[str, object]]:
+        for sent in self.sents(
+            fileids,
+            preprocess=preprocess,
+            plaintext=False,
+        ):
+            pos_sent = []
+            for token in sent:
+                pos_sent.append("/".join([token.text, token.pos_]))
+            yield pos_sent
 
 
 class LatinPlaintextCorpusReader(CLTKLatinCorpusReaderMixin, CLTKPlaintextCorpusReader):

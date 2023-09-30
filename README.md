@@ -1,7 +1,7 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
-Version 0.6.1; tested on Python 3.10.8, CLTK 1.1.5; LatinCy 3.6.0
+Version 0.6.2; tested on Python 3.10.8, CLTK 1.1.5; LatinCy 3.6.0
 
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
@@ -33,6 +33,7 @@ Version 0.6.1; tested on Python 3.10.8, CLTK 1.1.5; LatinCy 3.6.0
 - [CAMENA (jovanovic fork)](https://github.com/nevenjovanovic/camena-neolatinlit)
 
 ## Change log
+- 0.6.2: Add LatinCy support for LatinPerseusCorpusReader
 - 0.6.1: Miscellaneous fixes to reader, fileid selector
 - 0.6.0: Introduce metadata-based fileid selector
 - 0.5.6: Bump spaCy version

@@ -6,7 +6,7 @@ from subprocess import getoutput
 
 setup(
     name="cltk_readers",
-    version="0.6.1",
+    version="0.6.2",
     packages=["cltkreaders"],
     url="https://github.com/diyclassics/cltk_readers",
     license="MIT License",
