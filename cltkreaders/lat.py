@@ -689,6 +689,19 @@ class LatinPerseusCorpusReader(CLTKLatinCorpusReaderMixin, PerseusCorpusReader):
 
             yield spacy_doc
 
+    def texts(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        unline: bool = False,
+    ) -> Iterator[object]:
+        for doc in self.spacy_docs(
+            fileids,
+            preprocess=preprocess,
+            unline=unline,
+        ):
+            yield doc.text
+
     def paras(
         self,
         fileids: Union[str, list] = None,
