@@ -10,6 +10,9 @@ import os.path
 import codecs
 from typing import Callable, Iterator, Union
 
+import re
+from natsort import natsorted
+
 from cltkreaders.readers import TesseraeCorpusReader, PerseusTreebankCorpusReader
 
 from cltk import NLP
@@ -24,47 +27,89 @@ from cltk.utils import get_cltk_data_dir, query_yes_no
 from cltk.data.fetch import FetchCorpus
 from cltk.core.exceptions import CLTKException
 
+class CLTKGreekCorpusReaderMixin:
+    """Mixin class for CLTK Greek corpus readers"""
 
-class GreekTesseraeCorpusReader(TesseraeCorpusReader):
+    def fileids(self, match=None, **kwargs):
+        """
+        Return a list of file identifiers for the fileids that make up
+        this corpus.
+        """
+
+        fileids = self._fileids
+
+        facets = []
+
+        if match:
+            match_fileids = [
+                fileid
+                for fileid in fileids
+                if re.search(match, fileid, flags=re.IGNORECASE)
+            ]
+            facets.append(match_fileids)
+
+        if kwargs:
+            valid_keys = [list(k.keys()) for k in self._metadata.values()]
+            valid_keys = sorted(
+                list(set([item for sublist in valid_keys for item in sublist]))
+            )
+            for key, value in kwargs.items():
+                value = str(value)
+                if key not in valid_keys and key != "min_date" and key != "max_date":
+                    raise ValueError(
+                        f"Invalid key '{key}'. Valid keys are: {valid_keys}"
+                    )
+                if key != "min_date" and key != "max_date":
+                    kwargs_fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if metadata.get(key, "").lower() == value.lower()
+                    ]
+                    facets.append(kwargs_fileids)
+
+        if "min_date" in kwargs or "max_date" in kwargs:
+            if "date" in kwargs:
+                print(
+                    "Warning: You can only select min/max dates or a specific date. Using specific date."
+                )
+            else:
+                if "min_date" in kwargs and "max_date" in kwargs:
+                    date_fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if int(metadata["date"]) >= int(kwargs["min_date"])
+                        and int(metadata["date"]) <= int(kwargs["max_date"])
+                    ]
+                elif "min_date" in kwargs:
+                    date_fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if int(metadata["date"]) >= int(kwargs["min_date"])
+                    ]
+                elif "max_date" in kwargs:
+                    date_fileids = [
+                        fileid
+                        for fileid, metadata in self._metadata.items()
+                        if int(metadata["date"]) <= int(kwargs["max_date"])
+                    ]
+                facets.append(date_fileids)
+
+        if facets:
+            fileids = natsorted(list(set.intersection(*map(set, facets))))
+
+        return fileids
+
+
+class GreekTesseraeCorpusReader(CLTKGreekCorpusReaderMixin, TesseraeCorpusReader):
     """
     A corpus reader for Greek texts from the Tesserae-CLTK corpus
     """
 
-    def __init__(
-        self,
-        root: str = None,
-        fileids: str = r".*\.tess",
-        encoding: str = "utf-8",
-        lang: str = "grc",
-        normalization_form: str = "NFC",
-        word_tokenizer: Callable = None,
-        sent_tokenizer: Callable = None,
-        **kwargs,
-    ):
-        """
-        :param root: Location of plaintext files to be read into corpus reader
-        :param fileids: Pattern for matching files to be read into corpus reader
-        :param encoding: Text encoding for associated files; defaults to 'utf-8'
-        :param lang: Allows a language to be selected for language-specific corpus tasks; default is 'lat'
-        :param normalization_form: Normalization form for associated files; defaults to 'NFC'
-        :param kwargs: Miscellaneous keyword arguments
-        """
-        self.lang = lang
+    def __init__(self, nlp=None, word_tokenizer=None, sent_tokenizer=None):
+        self.lang = "grc"
         self.corpus = "grc_text_tesserae"
-
-        if root:
-            self.root = root
-        else:
-            self._root = None
-
+        self._root = self.root
         self.__check_corpus()
-
-        pipeline = Pipeline(
-            description="Greek pipeline for Tesserae readers",
-            processes=[GreekNormalizeProcess, GreekStanzaProcess],
-            language=get_lang(self.lang),
-        )
-        self.nlp = NLP(language=lang, custom_pipeline=pipeline, suppress_banner=True)
 
         if not word_tokenizer:
             self.word_tokenizer = GreekWordTokenizer()
@@ -76,23 +121,23 @@ class GreekTesseraeCorpusReader(TesseraeCorpusReader):
         else:
             self.sent_tokenizer = sent_tokenizer
 
-        TesseraeCorpusReader.__init__(
-            self,
-            self.root,
-            fileids,
-            encoding,
-            self.lang,
-            word_tokenizer=self.word_tokenizer,
-            sent_tokenizer=self.sent_tokenizer,
+        pipeline = Pipeline(
+            description="Greek pipeline for Tesserae readers",
+            processes=[GreekNormalizeProcess, GreekStanzaProcess],
+            language=get_lang(self.lang),
+        )
+        self.nlp = NLP(language=self.lang, custom_pipeline=pipeline, suppress_banner=True)            
+
+
+        super().__init__(
+            root=self._root, fileids=r".*\.tess", encoding="utf-8", lang="lat", normalization_form="NFC", word_tokenizer=word_tokenizer, sent_tokenizer=sent_tokenizer
         )
 
     @property
     def root(self):
-        if not self._root:
-            self._root = os.path.join(
-                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
-            )
-        return self._root
+        return os.path.join(
+            get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
+        )
 
     def __check_corpus(self):
         if not os.path.isdir(self.root):
