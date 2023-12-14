@@ -27,14 +27,25 @@ from cltk.utils import get_cltk_data_dir, query_yes_no
 from cltk.data.fetch import FetchCorpus
 from cltk.core.exceptions import CLTKException
 
+
 class CLTKGreekCorpusReaderMixin:
     """Mixin class for CLTK Greek corpus readers"""
 
+    # TODO: fileids should be in readers with in a non-language-specific mixin
     def fileids(self, match=None, **kwargs):
         """
         Return a list of file identifiers for the fileids that make up
         this corpus.
         """
+
+        def get_metadata(metadata, key, value):
+            return metadata.get(
+                key, ""
+            ).lower() == value.lower() or value.lower() in metadata.get(
+                key, ""
+            ).lower().split(
+                "|"
+            )
 
         fileids = self._fileids
 
@@ -63,7 +74,7 @@ class CLTKGreekCorpusReaderMixin:
                     kwargs_fileids = [
                         fileid
                         for fileid, metadata in self._metadata.items()
-                        if metadata.get(key, "").lower() == value.lower()
+                        if get_metadata(metadata, key, value)
                     ]
                     facets.append(kwargs_fileids)
 
@@ -126,11 +137,18 @@ class GreekTesseraeCorpusReader(CLTKGreekCorpusReaderMixin, TesseraeCorpusReader
             processes=[GreekNormalizeProcess, GreekStanzaProcess],
             language=get_lang(self.lang),
         )
-        self.nlp = NLP(language=self.lang, custom_pipeline=pipeline, suppress_banner=True)            
-
+        self.nlp = NLP(
+            language=self.lang, custom_pipeline=pipeline, suppress_banner=True
+        )
 
         super().__init__(
-            root=self._root, fileids=r".*\.tess", encoding="utf-8", lang="lat", normalization_form="NFC", word_tokenizer=word_tokenizer, sent_tokenizer=sent_tokenizer
+            root=self._root,
+            fileids=r".*\.tess",
+            encoding="utf-8",
+            lang="lat",
+            normalization_form="NFC",
+            word_tokenizer=word_tokenizer,
+            sent_tokenizer=sent_tokenizer,
         )
 
     @property

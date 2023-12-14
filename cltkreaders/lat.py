@@ -68,6 +68,15 @@ class CLTKLatinCorpusReaderMixin:
         this corpus.
         """
 
+        def get_metadata(metadata, key, value):
+            return metadata.get(
+                key, ""
+            ).lower() == value.lower() or value.lower() in metadata.get(
+                key, ""
+            ).lower().split(
+                "|"
+            )
+
         fileids = self._fileids
 
         facets = []
@@ -95,7 +104,7 @@ class CLTKLatinCorpusReaderMixin:
                     kwargs_fileids = [
                         fileid
                         for fileid, metadata in self._metadata.items()
-                        if metadata.get(key, "").lower() == value.lower()
+                        if get_metadata(metadata, key, value)
                     ]
                     facets.append(kwargs_fileids)
 
@@ -424,7 +433,6 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         sent_citations: bool = True,
         plaintext: bool = False,
     ) -> Iterator[Union[str, object]]:
-
         for doc in self.spacy_docs(
             fileids,
             preprocess=preprocess,
@@ -1018,7 +1026,6 @@ class CamenaCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
         pos_tagger: Callable = None,
         **kwargs,
     ):
-
         self.include_front = include_front
 
         LatinPerseusCorpusReader.__init__(
@@ -1085,7 +1092,6 @@ class CSELCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
         pos_tagger: Callable = None,
         **kwargs,
     ):
-
         LatinPerseusCorpusReader.__init__(
             self, root, fileids, encoding=encoding, nlp=nlp, ns=ns
         )
@@ -1151,7 +1157,6 @@ class CSELCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
                     yield para
 
             else:
-
                 paras = body.xpath(
                     ".//*[self::tei:title or self::tei:p]", namespaces=self.ns
                 )
@@ -1159,3 +1164,8 @@ class CSELCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
 
                 for para in paras:
                     yield self._format_para(para)
+
+
+if __name__ == "__main__":
+    CR = LatinTesseraeCorpusReader()
+    print(CR.fileids(genre="test"))
