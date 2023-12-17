@@ -242,17 +242,23 @@ class TesseraeCorpusReader(CLTKPlaintextCorpusReader):
                     "lang parameter in TesseraeCorpusReader must be set to 'grc' or 'lat'"
                 )
 
-        if not sent_tokenizer:
-            if self.lang == "grc":
-                self.sent_tokenizer = GreekRegexSentenceTokenizer()
-            if self.lang == "lat":
-                self.sent_tokenizer = LatinPunktSentenceTokenizer()
+        try:
+            if not sent_tokenizer:
+                if self.lang == "grc":
+                    self.sent_tokenizer = GreekRegexSentenceTokenizer()
+                if self.lang == "lat":
+                    self.sent_tokenizer = LatinPunktSentenceTokenizer()
+        except:
+            pass
 
-        if not word_tokenizer:
-            if self.lang == "grc":
-                self.word_tokenizer = GreekWordTokenizer()
-            if self.lang == "lat":
-                self.word_tokenizer = LatinWordTokenizer()
+        try:
+            if not word_tokenizer:
+                if self.lang == "grc":
+                    self.word_tokenizer = GreekWordTokenizer()
+                if self.lang == "lat":
+                    self.word_tokenizer = LatinWordTokenizer()
+        except:
+            pass
 
         CLTKPlaintextCorpusReader.__init__(self, root, fileids, encoding, kwargs)
 
