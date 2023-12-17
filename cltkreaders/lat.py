@@ -278,7 +278,7 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         self.lang = "lat"
         self.corpus = "lat_text_tesserae"
         if root:
-            self._root = self.root = root
+            self._root = root
         else:
             self._root = os.path.join(
                 get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
@@ -1165,8 +1165,3 @@ class CSELCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
 
                 for para in paras:
                     yield self._format_para(para)
-
-
-if __name__ == "__main__":
-    CR = LatinTesseraeCorpusReader()
-    print(CR.fileids(genre="test"))
