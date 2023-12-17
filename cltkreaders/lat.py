@@ -62,6 +62,7 @@ class cltk_pos_tagger:
 class CLTKLatinCorpusReaderMixin:
     """Mixin class for CLTK Latin corpus readers"""
 
+    # TODO: fileids should be in readers with in a non-language-specific mixin
     def fileids(self, match=None, **kwargs):
         """
         Return a list of file identifiers for the fileids that make up
@@ -273,11 +274,17 @@ class CLTKLatinCorpusReaderMixin:
 
 
 class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader):
-    def __init__(self, nlp=None):
+    def __init__(self, root=None, nlp=None):
         self.lang = "lat"
         self.corpus = "lat_text_tesserae"
-        self._root = self.root
-        self.__check_corpus()
+        if root:
+            self._root = self.root = root
+        else:
+            self._root = os.path.join(
+                get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
+            )
+            self.__check_corpus()
+
         super().__init__(
             root=self._root, fileids=r".*\.tess", encoding="utf-8", lang="lat"
         )
@@ -294,12 +301,6 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         Token.set_extension("citation", default=False, force=True)
 
         self._setup_latin_tools(self.nlp)
-
-    @property
-    def root(self):
-        return os.path.join(
-            get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
-        )
 
     def __check_corpus(self):
         if not os.path.isdir(self._root):
