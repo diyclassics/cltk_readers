@@ -332,6 +332,7 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         preprocess: Callable = None,
         line_citations: bool = True,
         sent_citations: bool = True,
+        annotations: bool = True,
     ) -> Iterator[object]:
         def make_line_spans(lens: list) -> List[tuple]:
             spans = []
@@ -384,9 +385,39 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
             lines = list(doc_rows.values())
             lens = [len(line) for line in lines]
             line_spans = make_line_spans(lens)
+
             doc = Doc.from_docs(lines)
             metadata = self._metadata[current_file]
-            spacy_doc = textacy.make_spacy_doc((doc.text, metadata), lang=self.model)
+
+            if annotations:
+                spacy_doc = textacy.make_spacy_doc(
+                    (doc.text, metadata), lang=self.model
+                )
+
+                if sent_citations:
+                    citation_ranges = []
+                    citation_ranges_formatted = []
+
+                    citation_start = 0
+
+                    for sent in spacy_doc.sents:
+                        sent_end = sent.end
+                        citation_end = getIndex(line_spans, sent_end)
+                        citation_ranges.append((citation_start, citation_end))
+                        citation_ranges_formatted.append(
+                            (citations[citation_start], citations[citation_end])
+                        )
+                        if sent_end == line_spans[citation_end][1]:
+                            citation_start = citation_end + 1
+                        else:
+                            citation_start = citation_end
+
+                    # Add sentence citations to sents
+                    for cit, sent in zip(citation_ranges_formatted, spacy_doc.sents):
+                        sent._.sentence_citation = cit
+                        sent._.metadata = spacy_doc._.meta
+            else:
+                spacy_doc = self.model.make_doc(doc.text)
 
             if line_citations:
                 spacy_doc.spans["lines"] = [
@@ -396,29 +427,6 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
                 for cit, line in zip(citations, spacy_doc.spans["lines"]):
                     line._.citation = cit
                     line._.metadata = spacy_doc._.meta
-
-            if sent_citations:
-                citation_ranges = []
-                citation_ranges_formatted = []
-
-                citation_start = 0
-
-                for sent in spacy_doc.sents:
-                    sent_end = sent.end
-                    citation_end = getIndex(line_spans, sent_end)
-                    citation_ranges.append((citation_start, citation_end))
-                    citation_ranges_formatted.append(
-                        (citations[citation_start], citations[citation_end])
-                    )
-                    if sent_end == line_spans[citation_end][1]:
-                        citation_start = citation_end + 1
-                    else:
-                        citation_start = citation_end
-
-                # Add sentence citations to sents
-                for cit, sent in zip(citation_ranges_formatted, spacy_doc.sents):
-                    sent._.sentence_citation = cit
-                    sent._.metadata = spacy_doc._.meta
 
             yield spacy_doc
 
@@ -433,12 +441,14 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         line_citations: bool = True,
         sent_citations: bool = True,
         plaintext: bool = False,
+        annotations: bool = True,
     ) -> Iterator[Union[str, object]]:
         for doc in self.spacy_docs(
             fileids,
             preprocess=preprocess,
             line_citations=line_citations,
             sent_citations=sent_citations,
+            annotations=annotations,
         ):
             for line in doc.spans["lines"]:
                 if plaintext:
@@ -490,6 +500,7 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
             preprocess=preprocess,
             line_citations=line_citations,
             sent_citations=sent_citations,
+            annotations=True,
         ):
             for sent in doc.sents:
                 if plaintext:
@@ -504,6 +515,7 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         line_citations: bool = True,
         sent_citations: bool = True,
         plaintext: bool = False,
+        annotations: bool = True,
     ) -> Iterator[Union[str, object]]:
         for line in self.lines(
             fileids,
@@ -511,6 +523,7 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
             line_citations=line_citations,
             sent_citations=sent_citations,
             plaintext=False,
+            annotations=annotations,
         ):
             for i, token in enumerate(line):
                 token._.citation = (line._.citation, i)
@@ -1165,3 +1178,23 @@ class CSELCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
 
                 for para in paras:
                     yield self._format_para(para)
+
+
+if __name__ == "__main__":
+    CR = LatinTesseraeCorpusReader()
+
+    import time
+
+    start = time.time()
+    spacy_docs_annotations = next(
+        CR.spacy_docs("vitruvius.de_architectura.part.9.tess", annotations=True)
+    )
+    end = time.time()
+    print(f"Time to process with annotations: {end - start}")
+
+    start = time.time()
+    spacy_docs_no_annotations = next(
+        CR.spacy_docs("vitruvius.de_architectura.part.9.tess", annotations=False)
+    )
+    end = time.time()
+    print(f"Time to process without annotations: {end - start}")
