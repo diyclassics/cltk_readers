@@ -10,6 +10,7 @@ import os.path
 import codecs
 from typing import Callable, Iterator, Union, List
 
+import string
 import re
 from lxml import etree
 from collections import defaultdict
@@ -274,7 +275,8 @@ class CLTKLatinCorpusReaderMixin:
 
 
 class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader):
-    def __init__(self, root=None, nlp=None):
+
+    def __init__(self, root=None, fileids=r".*\.tess", nlp=None):
         self.lang = "lat"
         self.corpus = "lat_text_tesserae"
         if root:
@@ -285,9 +287,7 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
             )
             self.__check_corpus()
 
-        super().__init__(
-            root=self._root, fileids=r".*\.tess", encoding="utf-8", lang="lat"
-        )
+        super().__init__(root=self._root, fileids=fileids, encoding="utf-8", lang="lat")
         if not nlp:
             self.nlp = "la_core_web_lg"
         else:
@@ -607,17 +607,33 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
         preprocess: Callable = None,
         line_citations: bool = True,
         sent_citations: bool = True,
+        count_punctuation: bool = True,
     ) -> Iterator[Union[str, object]]:
         chunks = []
         chunk = []
         counter = 0
 
         for sent in self.sents(fileids):
+            # print(f"{sent}\n")
             chunk.append(sent.as_doc())
             if basis == "char":
-                counter += len(sent.text)
+                if not count_punctuation:
+                    counter = len(
+                        [char for char in sent.text if char not in string.punctuation]
+                    )
+                else:
+                    counter = len(sent.text)
             else:
-                counter += len(sent)
+                if not count_punctuation:
+                    counter += len(
+                        [
+                            token
+                            for token in sent
+                            if token.text not in string.punctuation
+                        ]
+                    )
+                else:
+                    counter += len(sent)
 
             if counter > chunk_size:
                 chunks.append(chunk)
@@ -1178,23 +1194,3 @@ class CSELCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
 
                 for para in paras:
                     yield self._format_para(para)
-
-
-if __name__ == "__main__":
-    CR = LatinTesseraeCorpusReader()
-
-    import time
-
-    start = time.time()
-    spacy_docs_annotations = next(
-        CR.spacy_docs("vitruvius.de_architectura.part.9.tess", annotations=True)
-    )
-    end = time.time()
-    print(f"Time to process with annotations: {end - start}")
-
-    start = time.time()
-    spacy_docs_no_annotations = next(
-        CR.spacy_docs("vitruvius.de_architectura.part.9.tess", annotations=False)
-    )
-    end = time.time()
-    print(f"Time to process without annotations: {end - start}")

@@ -1,7 +1,7 @@
 # CLTK Readers
 A corpus-reader extension for CLTK
 
-Version 0.6.7; tested on Python 3.10.8, CLTK 1.1.5; LatinCy 3.7.2
+Version 0.6.8; tested on Python 3.10.8, CLTK 1.1.5; LatinCy 3.7.6
 
 ## Installation
 `pip install -e git+https://github.com/diyclassics/cltk_readers.git#egg=cltk_readers`
@@ -33,6 +33,7 @@ Version 0.6.7; tested on Python 3.10.8, CLTK 1.1.5; LatinCy 3.7.2
 - [CAMENA (jovanovic fork)](https://github.com/nevenjovanovic/camena-neolatinlit)
 
 ## Change log
+- 0.6.8: Add parameter to `chunks` method to allow for punctuation to be include/not included in chunking
 - 0.6.7: Add no annotations parameter to spacy_docs for LatinTesseraeCorpusReader
 - 0.6.6: Add `root` parameter to LatinTesseraeCorpusReader
 - 0.6.5: Add fileid selector support for pipe (|) delimited metadata
@@ -59,4 +60,4 @@ Version 0.6.7; tested on Python 3.10.8, CLTK 1.1.5; LatinCy 3.7.2
 - 0.2.4: Add support for Universal Dependencies files
 - 0.2.3: Add support for Perseus AGLDT Treebanks
 
-*Coded 2022-2023 by [Patrick J. Burns](http://github.com/diyclassics)*
+*Coded 2022-2024 by [Patrick J. Burns](http://github.com/diyclassics)*

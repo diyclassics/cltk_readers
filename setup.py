@@ -6,7 +6,7 @@ from subprocess import getoutput
 
 setup(
     name="cltk_readers",
-    version="0.6.7",
+    version="0.6.8",
     packages=["cltkreaders"],
     url="https://github.com/diyclassics/cltk_readers",
     license="MIT License",
@@ -16,10 +16,10 @@ setup(
     description="Corpus reader extension for the Classical Language Toolkit ",
     install_requires=[
         "cltk~=1.1.5",
-        "lxml==4.9.1",
+        "lxml==5.3.0",
         "natsort==8.2.0",
         "pyuca==1.2",
-        "spacy~=3.7.2",
+        "spacy==3.7.5",
         "la_core_web_lg@https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-any-py3-none-any.whl",
         "textacy==0.13.0",
     ],
