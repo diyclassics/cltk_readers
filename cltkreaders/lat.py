@@ -38,6 +38,7 @@ from cltk.core.exceptions import CLTKException
 import spacy
 from spacy.tokens import Doc, Span, Token
 import textacy
+from textacy.extract.kwic import keyword_in_context
 
 from natsort import natsorted
 
@@ -658,6 +659,38 @@ class LatinTesseraeCorpusReader(CLTKLatinCorpusReaderMixin, TesseraeCorpusReader
             chunk._.metadata = sent._.metadata
             yield chunk
 
+    def kwic(
+        self,
+        fileids: Union[str, list] = None,
+        keyword: str = None,
+        formatted: bool = False,
+        match_whole_keyword: bool = True,
+        n_items=False,
+        **kwargs,
+    ) -> list:
+        ignore_case = kwargs.get("ignore_case", True)
+        window_width = kwargs.get("window_width", 50)
+        pad_context = kwargs.get("pad_context", False)
+        if match_whole_keyword:
+            keyword = r"\b" + keyword + r"\b"
+        kwics = []
+        for doc in self.spacy_docs(fileids):
+            kwic = keyword_in_context(
+                doc,
+                keyword,
+                ignore_case=ignore_case,
+                window_width=window_width,
+                pad_context=pad_context,
+            )
+            kwics.extend(kwic)
+            if n_items and len(kwics) >= n_items:
+                break
+        if not formatted:
+            kwics = ["\t".join(kwic) for kwic in kwics]
+        if n_items:
+            kwics = kwics[:n_items]
+        return kwics
+
 
 # TODO: Add corpus download support following Tesserae example
 LatinPerseusTreebankCorpusReader = PerseusTreebankCorpusReader
@@ -1004,7 +1037,7 @@ class LatinLibraryCorpusReader(LatinPlaintextCorpusReader):
         else:
             self.nlp = "spacy"
 
-        CLTKPlaintextCorpusReader.__init__(self, self.root, r".*\.txt", "utf8")
+        LatinPlaintextCorpusReader.__init__(self, self.root, r".*\.txt", "utf8")
 
     @property
     def root(self):
@@ -1194,3 +1227,12 @@ class CSELCorpusReader(LatinPerseusCorpusReader, CLTKLatinCorpusReaderMixin):
 
                 for para in paras:
                     yield self._format_para(para)
+
+
+if __name__ == "__main__":
+    CR = LatinTesseraeCorpusReader()
+    test = ["vergil.aeneid.part.4.tess", "vergil.aeneid.part.6.tess"]
+    test = CR.fileids()
+    kwics = CR.kwic(fileids=test, keyword="est", n_items=100)
+    for kwic in kwics:
+        print(kwic)
