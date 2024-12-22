@@ -20,7 +20,7 @@ setup(
         "natsort==8.2.0",
         "pyuca==1.2",
         "spacy==3.7.5",
-        "la_core_web_lg@https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-any-py3-none-any.whl",
+        "la_core_web_lg@https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.7.7-py3-none-any.whl",
         "textacy==0.13.0",
     ],
     classifiers=[
