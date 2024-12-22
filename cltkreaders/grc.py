@@ -13,6 +13,7 @@ from typing import Callable, Iterator, Union
 import re
 from natsort import natsorted
 
+from cltkreaders.readers import CLTKPlaintextCorpusReader
 from cltkreaders.readers import TesseraeCorpusReader, PerseusTreebankCorpusReader
 
 from cltk import NLP
@@ -22,10 +23,29 @@ from cltk.alphabet.processes import GreekNormalizeProcess
 from cltk.dependency.processes import GreekStanzaProcess
 from cltk.sentence.grc import GreekRegexSentenceTokenizer
 from cltk.tokenizers.word import PunktWordTokenizer as GreekWordTokenizer
+from cltk.lemmatize.grc import GreekBackoffLemmatizer
 
 from cltk.utils import get_cltk_data_dir, query_yes_no
 from cltk.data.fetch import FetchCorpus
 from cltk.core.exceptions import CLTKException
+
+
+class cltk_pos_tagger:
+    def __init__(self, lang):
+        self.lang = lang
+
+    def tag(self, doc):
+        pipeline = Pipeline(
+            description="Greek pipeline for CLTK readers",
+            processes=[GreekNormalizeProcess, GreekStanzaProcess],
+            language=get_lang(self.lang),
+        )
+
+        cltk_nlp = NLP(
+            language=self.lang, custom_pipeline=pipeline, suppress_banner=True
+        )
+        doc = cltk_nlp(doc)
+        return [token.pos.name for token in doc]
 
 
 class CLTKGreekCorpusReaderMixin:
@@ -110,6 +130,19 @@ class CLTKGreekCorpusReaderMixin:
 
         return fileids
 
+    def _setup_greek_tools(self, nlp):
+        if not self.word_tokenizer:
+            self.word_tokenizer = GreekWordTokenizer()
+
+        if not self.sent_tokenizer:
+            self.sent_tokenizer = GreekRegexSentenceTokenizer()
+
+        if not self.lemmatizer:
+            self.lemmatizer = GreekBackoffLemmatizer()
+
+        if not self.pos_tagger:
+            self.pos_tagger = cltk_pos_tagger(lang=self.lang)
+
 
 class GreekTesseraeCorpusReader(CLTKGreekCorpusReaderMixin, TesseraeCorpusReader):
     """
@@ -163,14 +196,14 @@ class GreekTesseraeCorpusReader(CLTKGreekCorpusReaderMixin, TesseraeCorpusReader
                 get_cltk_data_dir(), f"{self.lang}/text/{self.corpus}/texts"
             ):
                 raise CLTKException(
-                    f"Failed to instantiate GreekTesseraeCorpusReader. Root folder not found."
+                    "Failed to instantiate GreekTesseraeCorpusReader. Root folder not found."
                 )
             else:
                 print(  # pragma: no cover
                     f"CLTK message: Unless a path is specifically passed to the 'root' parameter, this corpus reader expects to find the CLTK-Tesserae texts at {f'{self.lang}/text/{self.lang}_text_tesserae/texts'}."
                 )  # pragma: no cover
                 dl_is_allowed = query_yes_no(
-                    f"Do you want to download CLTK-Tesserae Greek files?"
+                    "Do you want to download CLTK-Tesserae Greek files?"
                 )  # type: bool
                 if dl_is_allowed:
                     fetch_corpus = FetchCorpus(language=self.lang)
@@ -178,7 +211,7 @@ class GreekTesseraeCorpusReader(CLTKGreekCorpusReaderMixin, TesseraeCorpusReader
                     fetch_corpus.import_corpus(corpus_name=f"{self.lang}_models_cltk")
                 else:
                     raise CLTKException(
-                        f"Failed to instantiate GreekTesseraeCorpusReader. Rerun with 'root' parameter set to folder with .tess files or download the corpus to the CLTK_DATA folder."
+                        "Failed to instantiate GreekTesseraeCorpusReader. Rerun with 'root' parameter set to folder with .tess files or download the corpus to the CLTK_DATA folder."
                     )
 
     def docs(self, fileids: Union[list, str] = None) -> Iterator[str]:
@@ -212,3 +245,133 @@ class GreekTesseraeCorpusReader(CLTKGreekCorpusReaderMixin, TesseraeCorpusReader
 
 # TODO: Add corpus download support following Tesserae example
 GreekPerseusTreebankCorpusReader = PerseusTreebankCorpusReader
+
+
+class GreekPlaintextCorpusReader(CLTKGreekCorpusReaderMixin, CLTKPlaintextCorpusReader):
+    """
+    A corpus reader for Ancient Greek texts
+    """
+
+    def __init__(
+        self,
+        root=None,
+        fileids=r".*\.txt",
+        encoding="utf8",
+        lang="grc",
+        nlp=None,
+        word_tokenizer=None,
+        sent_tokenizer=None,
+        lemmatizer=None,
+        pos_tagger=None,
+    ):
+        self._root = root
+        self.lang = lang
+        self.nlp = nlp
+        self.word_tokenizer = word_tokenizer
+        self.sent_tokenizer = sent_tokenizer
+        self.lemmatizer = lemmatizer
+        self.pos_tagger = pos_tagger
+
+        # TODO: Hold until spaCy refactoring
+        # Doc.set_extension("metadata", default=None, force=True)
+        # Span.set_extension("metadata", default=None, force=True)
+        # Token.set_extension("metadata", default=None, force=True)
+        self._setup_greek_tools(self.nlp)
+        CLTKPlaintextCorpusReader.__init__(self, root, fileids, encoding)
+
+    def texts(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+    ) -> Iterator[Union[str, object]]:
+        for doc in self.docs(
+            fileids,
+        ):
+            yield doc
+
+    def sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        for doc in self.docs(
+            fileids,
+        ):
+            sents = self.sent_tokenizer.tokenize(doc)
+            for sent in sents:
+                yield sent.strip()
+
+    def tokens(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+        plaintext: bool = False,
+    ) -> Iterator[Union[str, object]]:
+        for sent in self.sents(
+            fileids,
+            preprocess=preprocess,
+            plaintext=False,
+        ):
+            for sent in self.sents(fileids, preprocess=preprocess):
+                tokens = self.word_tokenizer.tokenize(sent)
+                for token in tokens:
+                    yield token
+
+    def tokenized_sents(
+        self,
+        fileids: Union[str, list] = None,
+        preprocess: Callable = None,
+    ) -> Iterator[Union[str, object]]:
+        for sent in self.sents(
+            fileids,
+            preprocess=preprocess,
+            plaintext=False,
+        ):
+            tokenized_sent = []
+            tokens = self.word_tokenizer.tokenize(sent)
+            lemmas = [lemma for _, lemma in self.lemmatizer.lemmatize(tokens)]
+            # TODO: Implement POS tagging
+            postags = ["N/A" for _ in tokens]
+
+            for token, lemma, postag in zip(tokens, lemmas, postags):
+                tokenized_sent.append((token, lemma, postag))
+            yield tokenized_sent
+
+    def chunks(
+        self,
+        fileids: Union[str, list] = None,
+        chunk_size: int = 1000,
+        basis="token",
+        keep_tail: bool = True,
+        preprocess: Callable = None,
+    ) -> Iterator[Union[str, object]]:
+        chunks = []
+        chunk = []
+        counter = 0
+
+        for sent in self.sents(fileids):
+            chunk.append(sent)
+            if basis == "char":
+                counter += len(sent)
+            else:
+                counter += len(self.word_tokenizer.tokenize(sent))
+
+            if counter > chunk_size:
+                chunks.append(chunk)
+                counter = 0
+                chunk = []
+
+        if len(chunks) == 0:
+            chunks.append(chunk)
+
+        if keep_tail and len(chunks) > 1:
+            chunks.append(chunk)
+            chunks = chunks[:-2] + [chunks[-2] + chunks[-1]]
+        elif len(chunks) > 1:
+            chunks = chunks[:-1]
+        else:
+            pass
+
+        for chunk in chunks:
+            yield chunk
