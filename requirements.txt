@@ -1,7 +1,7 @@
-cltk==1.1.5
+cltk
 la-core-web-lg @ https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.7.7-py3-none-any.whl
-lxml==4.9.1
-natsort==8.2.0
+lxml==5.3.1
+natsort==8.4.0
 pyuca==1.2
 spacy==3.7.5
 textacy==0.13.0
