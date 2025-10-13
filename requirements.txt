@@ -1,4 +1,4 @@
-cltk==1.4.0
+cltk @ git+https://github.com/cltk/cltk.git@v1.4.0
 la-core-web-lg @ https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.7.7-py3-none-any.whl
 lxml==5.3.1
 natsort==8.4.0
