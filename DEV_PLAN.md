@@ -344,17 +344,24 @@ def get_default_nlp() -> spacy.Language:
 
 ```
 BaseCorpusReader (ABC)
-├── PlaintextReader
-│   └── LatinLibraryReader
-├── TesseraeReader (implements CitationReaderProtocol)
-├── TEIReader (ABC)
-│   ├── PerseusReader
-│   ├── CamenaReader
-│   └── CSELReader
-└── TreebankReader
-    ├── AGLDTReader
-    └── UDReader
+│
+├── [P1] TesseraeReader        # Citation-based .tess format
+│        └── implements CitationReaderProtocol
+│
+├── [P2] PlaintextReader       # Generic plaintext
+│        └── LatinLibraryReader
+│
+├── [P3] TEIReader (ABC)       # TEI/XML base
+│        ├── PerseusReader     # Perseus PDILL
+│        ├── CamenaReader      # Neo-Latin (future)
+│        └── CSELReader        # CSEL collection (future)
+│
+└── [Future] TreebankReader
+         ├── AGLDTReader
+         └── UDReader
 ```
+
+**Priority Order**: Tesserae → Latin Library → Perseus
 
 ### 2.2 Tesserae Reader Refactor (`readers/tesserae.py`)
 
@@ -864,16 +871,16 @@ addopts = "-v --tb=short"
 - [ ] Implement `nlp/pipeline.py` with model loading
 - [ ] Set up pytest with basic fixtures
 
-### Milestone 2: Primary Readers
-- [ ] Implement `TesseraeReader` (highest priority)
-- [ ] Implement `PerseusReader` (TEI/XML base)
-- [ ] Implement `PlaintextReader` and `LatinLibraryReader`
+### Milestone 2: Primary Readers (Priority Order)
+- [ ] **P1: TesseraeReader** - Citation-based `.tess` format (most used)
+- [ ] **P2: LatinLibraryReader** - Plaintext collection
+- [ ] **P3: PerseusReader** - TEI/XML base for PDILL etc.
 - [ ] Achieve 80%+ test coverage on new code
 
-### Milestone 3: Specialized Readers
-- [ ] Implement `AGLDTReader` for treebanks
-- [ ] Implement `UDReader` for Universal Dependencies
-- [ ] Implement `CamenaReader` and `CSELReader`
+### Milestone 3: Secondary Readers
+- [ ] `AGLDTReader` for treebanks
+- [ ] `UDReader` for Universal Dependencies
+- [ ] `CamenaReader` and `CSELReader`
 - [ ] Full test coverage
 
 ### Milestone 4: Polish & Release
