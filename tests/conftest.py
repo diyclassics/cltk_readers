@@ -1,0 +1,22 @@
+"""Pytest fixtures for latincy-readers tests."""
+
+import pytest
+from pathlib import Path
+
+
+@pytest.fixture
+def fixtures_dir() -> Path:
+    """Path to test fixtures directory."""
+    return Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def tesserae_dir(fixtures_dir) -> Path:
+    """Path to Tesserae test fixtures."""
+    return fixtures_dir / "tesserae"
+
+
+@pytest.fixture
+def sample_tess_file(tesserae_dir) -> Path:
+    """Path to sample .tess file."""
+    return tesserae_dir / "tesserae.tess"
