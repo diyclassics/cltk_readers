@@ -234,3 +234,131 @@ class TestTesseraeLineParsing:
         """_parse_lines handles text without citations."""
         lines = list(reader._parse_lines("Just some plain text\nwith no citations"))
         assert lines == []
+
+
+class TestTesseraeSearch:
+    """Test search functionality."""
+
+    @pytest.fixture
+    def reader(self, tesserae_dir):
+        return TesseraeReader(
+            root=tesserae_dir,
+            fileids="*.tess",
+            annotation_level=AnnotationLevel.TOKENIZE,
+        )
+
+    # -------------------------------------------------------------------------
+    # search() method
+    # -------------------------------------------------------------------------
+
+    def test_search_returns_matches(self, reader):
+        """search() finds pattern matches."""
+        results = list(reader.search(r"Mucius"))
+        assert len(results) > 0
+        # Each result is (fileid, citation, text, matches)
+        fileid, citation, text, matches = results[0]
+        assert "Mucius" in matches or "mucius" in matches
+
+    def test_search_returns_citation(self, reader):
+        """search() includes citation in results."""
+        results = list(reader.search(r"Scaevola"))
+        assert len(results) > 0
+        _, citation, _, _ = results[0]
+        assert citation.startswith("<")
+        assert citation.endswith(">")
+
+    def test_search_case_insensitive_default(self, reader):
+        """search() is case-insensitive by default."""
+        upper = list(reader.search(r"MUCIUS"))
+        lower = list(reader.search(r"mucius"))
+        assert len(upper) == len(lower)
+
+    def test_search_case_sensitive_option(self, reader):
+        """search() can be case-sensitive."""
+        # "Mucius" appears capitalized in text
+        upper = list(reader.search(r"Mucius", ignore_case=False))
+        lower = list(reader.search(r"mucius", ignore_case=False))
+        assert len(upper) > 0
+        assert len(lower) == 0
+
+    # -------------------------------------------------------------------------
+    # find_lines() method
+    # -------------------------------------------------------------------------
+
+    def test_find_lines_with_pattern(self, reader):
+        """find_lines() works with regex pattern."""
+        results = list(reader.find_lines(pattern=r"\bMuci\w+\b"))
+        assert len(results) > 0
+        fileid, citation, text = results[0]
+        assert "Muci" in text
+
+    def test_find_lines_with_forms(self, reader):
+        """find_lines() works with forms list."""
+        results = list(reader.find_lines(forms=["Mucius", "Scaevola"]))
+        assert len(results) > 0
+
+    def test_find_lines_requires_pattern_or_forms(self, reader):
+        """find_lines() raises if neither pattern nor forms provided."""
+        with pytest.raises(ValueError):
+            list(reader.find_lines())
+
+    # -------------------------------------------------------------------------
+    # find_sents() method
+    # -------------------------------------------------------------------------
+
+    def test_find_sents_returns_dicts(self, reader):
+        """find_sents() returns dicts with expected keys."""
+        results = list(reader.find_sents(pattern=r"\bMucius\b"))
+        assert len(results) > 0
+        result = results[0]
+        assert "fileid" in result
+        assert "citation" in result
+        assert "sentence" in result
+        assert "matches" in result
+
+    def test_find_sents_with_forms(self, reader):
+        """find_sents() works with forms list."""
+        results = list(reader.find_sents(forms=["Laelius", "Laeli"]))
+        assert len(results) > 0
+
+    def test_find_sents_with_context(self, reader):
+        """find_sents() includes context when requested."""
+        results = list(reader.find_sents(pattern=r"\bMucius\b", context=True))
+        assert len(results) > 0
+        result = results[0]
+        assert "prev_sent" in result
+        assert "next_sent" in result
+
+    # -------------------------------------------------------------------------
+    # export_search_results() method
+    # -------------------------------------------------------------------------
+
+    def test_export_tsv(self, reader):
+        """export_search_results() produces TSV."""
+        results = reader.find_sents(pattern=r"\bMucius\b")
+        tsv = reader.export_search_results(results, format="tsv")
+        lines = tsv.split("\n")
+        assert len(lines) > 1  # Header + data
+        assert "fileid" in lines[0]
+        assert "\t" in lines[0]
+
+    def test_export_csv(self, reader):
+        """export_search_results() produces CSV."""
+        results = reader.find_sents(pattern=r"\bMucius\b")
+        csv = reader.export_search_results(results, format="csv")
+        lines = csv.split("\n")
+        assert len(lines) > 1
+        assert "fileid" in lines[0]
+        assert "," in lines[0]
+
+    def test_export_jsonl(self, reader):
+        """export_search_results() produces JSONL."""
+        import json
+        results = reader.find_sents(pattern=r"\bMucius\b")
+        jsonl = reader.export_search_results(results, format="jsonl")
+        lines = jsonl.split("\n")
+        # Each line should be valid JSON
+        for line in lines:
+            if line:
+                data = json.loads(line)
+                assert "sentence" in data

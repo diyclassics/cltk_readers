@@ -237,3 +237,242 @@ class TesseraeReader(BaseCorpusReader):
             raw_text = path.read_text(encoding=self._encoding)
             for line in self._parse_lines(raw_text):
                 yield line.citation, self._normalize_text(line.text)
+
+    # -------------------------------------------------------------------------
+    # Search and filtering methods
+    # -------------------------------------------------------------------------
+
+    def search(
+        self,
+        pattern: str,
+        fileids: str | list[str] | None = None,
+        ignore_case: bool = True,
+    ) -> Iterator[tuple[str, str, str, list[str]]]:
+        """Search for pattern in texts. Fast, no NLP required.
+
+        Args:
+            pattern: Regex pattern to search for.
+            fileids: Files to search, or None for all.
+            ignore_case: Whether to ignore case (default True).
+
+        Yields:
+            Tuples of (fileid, citation, text, matches) for each matching line.
+
+        Example:
+            >>> for fid, cit, text, matches in reader.search(r"Theb\\w+"):
+            ...     print(f"{cit}: found {matches}")
+        """
+        flags = re.IGNORECASE if ignore_case else 0
+        regex = re.compile(pattern, flags)
+
+        for path in self._iter_paths(fileids):
+            fileid = str(path.relative_to(self._root))
+            raw_text = path.read_text(encoding=self._encoding)
+
+            for line in self._parse_lines(raw_text):
+                text = self._normalize_text(line.text)
+                matches = regex.findall(text)
+                if matches:
+                    yield fileid, line.citation, text, matches
+
+    def find_lines(
+        self,
+        pattern: str | None = None,
+        forms: list[str] | None = None,
+        fileids: str | list[str] | None = None,
+        ignore_case: bool = True,
+    ) -> Iterator[tuple[str, str, str]]:
+        """Find citation lines containing specific words/patterns.
+
+        Fast path using regex - no NLP required.
+
+        Args:
+            pattern: Regex pattern to match.
+            forms: List of exact word forms to match (creates pattern from list).
+            fileids: Files to search, or None for all.
+            ignore_case: Whether to ignore case (default True).
+
+        Yields:
+            Tuples of (fileid, citation, text).
+
+        Example:
+            >>> # Find lines with any form of "Thebae"
+            >>> for fid, cit, text in reader.find_lines(pattern=r"\\bTheb\\w*\\b"):
+            ...     print(f"{cit}: {text[:60]}...")
+
+            >>> # Find lines with specific forms
+            >>> forms = ["Thebas", "Thebarum", "Thebis", "Thebanos"]
+            >>> for fid, cit, text in reader.find_lines(forms=forms):
+            ...     print(f"{cit}: {text[:60]}...")
+        """
+        if pattern is None and forms is None:
+            raise ValueError("Must provide either pattern or forms")
+
+        if forms is not None:
+            # Build pattern from forms list with word boundaries
+            escaped = [re.escape(f) for f in forms]
+            pattern = r"\b(" + "|".join(escaped) + r")\b"
+
+        for fileid, citation, text, _matches in self.search(pattern, fileids, ignore_case):
+            yield fileid, citation, text
+
+    def find_sents(
+        self,
+        pattern: str | None = None,
+        forms: list[str] | None = None,
+        lemma: str | None = None,
+        fileids: str | list[str] | None = None,
+        ignore_case: bool = True,
+        context: bool = False,
+    ) -> Iterator[dict]:
+        """Find sentences containing specific words/patterns/lemmas.
+
+        This is the main search method for extracting sentences for annotation.
+
+        Args:
+            pattern: Regex pattern to match.
+            forms: List of exact word forms to match.
+            lemma: Lemma to match (requires NLP - slower but handles all forms).
+            fileids: Files to search, or None for all.
+            ignore_case: Whether to ignore case (default True for pattern/forms).
+            context: If True, include surrounding sentences.
+
+        Yields:
+            Dicts with keys: fileid, citation, sentence, matches, (prev_sent, next_sent if context).
+
+        Example:
+            >>> # Fast: regex pattern
+            >>> for hit in reader.find_sents(pattern=r"\\bTheb\\w+\\b"):
+            ...     print(f"{hit['citation']}: {hit['sentence']}")
+
+            >>> # Fast: explicit forms
+            >>> for hit in reader.find_sents(forms=["Caesar", "Caesaris", "Caesarem"]):
+            ...     print(hit['sentence'])
+
+            >>> # Slower but complete: by lemma
+            >>> for hit in reader.find_sents(lemma="Caesar"):
+            ...     print(hit['sentence'])
+        """
+        if lemma is not None:
+            # Lemma search requires NLP
+            yield from self._find_sents_by_lemma(lemma, fileids, context)
+        else:
+            # Fast path: regex search
+            yield from self._find_sents_by_pattern(pattern, forms, fileids, ignore_case, context)
+
+    def _find_sents_by_pattern(
+        self,
+        pattern: str | None,
+        forms: list[str] | None,
+        fileids: str | list[str] | None,
+        ignore_case: bool,
+        context: bool,
+    ) -> Iterator[dict]:
+        """Find sentences by regex pattern (fast path)."""
+        if pattern is None and forms is None:
+            raise ValueError("Must provide either pattern or forms")
+
+        if forms is not None:
+            escaped = [re.escape(f) for f in forms]
+            pattern = r"\b(" + "|".join(escaped) + r")\b"
+
+        flags = re.IGNORECASE if ignore_case else 0
+        regex = re.compile(pattern, flags)
+
+        for doc in self.docs(fileids):
+            sents = list(doc.sents)
+            for i, sent in enumerate(sents):
+                matches = regex.findall(sent.text)
+                if matches:
+                    result = {
+                        "fileid": doc._.fileid,
+                        "citation": self._get_citation_for_span(doc, sent),
+                        "sentence": sent.text,
+                        "matches": matches,
+                    }
+                    if context:
+                        result["prev_sent"] = sents[i - 1].text if i > 0 else None
+                        result["next_sent"] = sents[i + 1].text if i < len(sents) - 1 else None
+                    yield result
+
+    def _find_sents_by_lemma(
+        self,
+        lemma: str,
+        fileids: str | list[str] | None,
+        context: bool,
+    ) -> Iterator[dict]:
+        """Find sentences by lemma (uses NLP)."""
+        target_lemma = lemma.lower()
+
+        for doc in self.docs(fileids):
+            sents = list(doc.sents)
+            for i, sent in enumerate(sents):
+                matches = [t.text for t in sent if t.lemma_.lower() == target_lemma]
+                if matches:
+                    result = {
+                        "fileid": doc._.fileid,
+                        "citation": self._get_citation_for_span(doc, sent),
+                        "sentence": sent.text,
+                        "matches": matches,
+                        "lemma": lemma,
+                    }
+                    if context:
+                        result["prev_sent"] = sents[i - 1].text if i > 0 else None
+                        result["next_sent"] = sents[i + 1].text if i < len(sents) - 1 else None
+                    yield result
+
+    def _get_citation_for_span(self, doc: "Doc", span: "Span") -> str | None:
+        """Get the citation for a span by finding the overlapping line span."""
+        for line_span in doc.spans.get("lines", []):
+            # Check if spans overlap
+            if span.start < line_span.end and span.end > line_span.start:
+                return line_span._.citation
+        return None
+
+    def export_search_results(
+        self,
+        results: Iterator[dict],
+        format: str = "tsv",
+    ) -> str:
+        """Export search results to a string in the specified format.
+
+        Args:
+            results: Iterator of result dicts from find_sents().
+            format: Output format - "tsv", "csv", or "jsonl".
+
+        Returns:
+            Formatted string with results.
+
+        Example:
+            >>> results = reader.find_sents(forms=["Thebas", "Thebarum"])
+            >>> print(reader.export_search_results(results, format="tsv"))
+        """
+        import json
+
+        results_list = list(results)
+
+        if format == "jsonl":
+            return "\n".join(json.dumps(r, ensure_ascii=False) for r in results_list)
+
+        elif format in ("tsv", "csv"):
+            sep = "\t" if format == "tsv" else ","
+            lines = []
+            # Header
+            lines.append(sep.join(["fileid", "citation", "matches", "sentence"]))
+            # Data
+            for r in results_list:
+                matches_str = ";".join(r.get("matches", []))
+                # Escape quotes and newlines in sentence
+                sent = r.get("sentence", "").replace('"', '""').replace("\n", " ")
+                if sep == ",":
+                    sent = f'"{sent}"'
+                lines.append(sep.join([
+                    r.get("fileid", ""),
+                    r.get("citation", ""),
+                    matches_str,
+                    sent,
+                ]))
+            return "\n".join(lines)
+
+        else:
+            raise ValueError(f"Unknown format: {format}")
