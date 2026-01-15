@@ -18,16 +18,16 @@ The project is undergoing a **ground-up refactor** with these primary goals:
 
 ```bash
 # Install in development mode
-pip install -e .
+pip install -e ".[dev]"
 
 # Run tests
-python -m pytest cltkreaders/tests/ -v
+python -m pytest tests/ -v
 
 # Run a single test file
-python -m pytest cltkreaders/tests/test_readers_lat.py -v
+python -m pytest tests/test_tesserae.py -v
 
 # Run with coverage
-python -m pytest cltkreaders/tests/ --cov=cltkreaders --cov-report=term-missing
+python -m pytest tests/ --cov=latincyreaders --cov-report=term-missing
 ```
 
 ## Project Structure
@@ -193,3 +193,181 @@ print(f"Found {files.count()} files")
 - Consistent return types (always spaCy objects, use `.text` for strings)
 - Simplified constructor signatures
 - Removal of deprecated `preprocess` callbacks (use spaCy pipelines instead)
+
+---
+
+## API Reference
+
+### AnnotationLevel Enum
+Controls NLP processing overhead:
+```python
+from latincyreaders import AnnotationLevel
+
+AnnotationLevel.NONE      # Raw text only, no spaCy
+AnnotationLevel.TOKENIZE  # Tokenization + sentence splitting only
+AnnotationLevel.BASIC     # + lemma, POS (default)
+AnnotationLevel.FULL      # + NER, dependency parsing
+```
+
+### TesseraeReader
+
+#### Constructor
+```python
+TesseraeReader(
+    root: str | Path,                              # Corpus directory
+    fileids: str = "**/*.tess",                    # Glob pattern
+    encoding: str = "utf-8",                       # File encoding
+    annotation_level: AnnotationLevel = BASIC,     # NLP level
+)
+```
+
+#### Core Methods (inherited from BaseCorpusReader)
+| Method | Returns | NLP Required | Description |
+|--------|---------|--------------|-------------|
+| `fileids(match=None)` | `list[str]` | No | List matching file identifiers |
+| `texts(fileids=None)` | `Iterator[str]` | No | Raw text strings |
+| `docs(fileids=None)` | `Iterator[Doc]` | Yes | spaCy Doc objects |
+| `sents(fileids=None, as_text=False)` | `Iterator[Span\|str]` | Yes | Sentences |
+| `tokens(fileids=None, as_text=False)` | `Iterator[Token\|str]` | Yes | Individual tokens |
+
+#### Tesserae-Specific Methods
+| Method | Returns | NLP Required | Description |
+|--------|---------|--------------|-------------|
+| `texts_by_line(fileids=None)` | `Iterator[tuple[str,str]]` | No | (citation, text) pairs |
+| `lines(fileids=None)` | `Iterator[Span]` | Yes | Citation-unit spans |
+| `doc_rows(fileids=None)` | `Iterator[dict[str,Span]]` | Yes | Citation→Span mappings |
+
+#### Search Methods
+| Method | Returns | NLP Required | Description |
+|--------|---------|--------------|-------------|
+| `search(pattern, fileids=None, ignore_case=True)` | `Iterator[tuple]` | No | Fast regex search |
+| `find_lines(pattern=None, forms=None, ...)` | `Iterator[tuple]` | No | Find citation lines |
+| `find_sents(pattern=None, forms=None, lemma=None, ...)` | `Iterator[dict]` | Yes | Find sentences |
+| `export_search_results(results, format="tsv")` | `str` | No | Export to TSV/CSV/JSONL |
+
+#### spaCy Extensions
+```python
+# On Doc objects
+doc._.fileid     # str: relative path to source file
+doc._.metadata   # dict: file metadata
+
+# On Span objects (in doc.spans["lines"])
+span._.citation  # str: citation string, e.g. "<verg. aen. 1.1>"
+
+# On Token objects (when using concordance features)
+token._.citation # tuple: (citation_str, token_index)
+```
+
+---
+
+## Use Cases
+
+### 1. Extract Sentences for NEL Annotation
+Find sentences containing forms of a proper noun for Named Entity Linking annotation:
+
+```python
+from latincyreaders import TesseraeReader
+
+reader = TesseraeReader("/path/to/tesserae/la")
+
+# Option A: Regex pattern (fast, catches most forms)
+results = reader.find_sents(pattern=r"\bTheb\w+\b")
+
+# Option B: Explicit forms (precise control)
+thebae_forms = ["Thebas", "Thebarum", "Thebis", "Thebanos", "Thebanis"]
+results = reader.find_sents(forms=thebae_forms)
+
+# Option C: By lemma (complete but slower)
+results = reader.find_sents(lemma="Thebae")
+
+# Export for annotation
+tsv = reader.export_search_results(results, format="tsv")
+with open("thebae_sentences.tsv", "w") as f:
+    f.write(tsv)
+```
+
+### 2. Fast Corpus Exploration (No NLP)
+Quick searches without loading NLP models:
+
+```python
+reader = TesseraeReader(path, annotation_level=AnnotationLevel.NONE)
+
+# Count occurrences across corpus
+for fid, cit, text, matches in reader.search(r"\bCaesar\w*\b"):
+    print(f"{cit}: {len(matches)} matches")
+
+# Get raw citation-text pairs
+for citation, text in reader.texts_by_line():
+    if "Roma" in text:
+        print(f"{citation}: {text[:60]}...")
+```
+
+### 3. Linguistic Analysis with Full Annotations
+Leverage spaCy annotations for analysis:
+
+```python
+reader = TesseraeReader(path, annotation_level=AnnotationLevel.FULL)
+
+# Find sentences and analyze
+for hit in reader.find_sents(lemma="amo"):
+    print(f"Citation: {hit['citation']}")
+    print(f"Sentence: {hit['sentence']}")
+    print(f"Forms found: {hit['matches']}")
+    print()
+```
+
+### 4. Build a Concordance
+Create lemma-based concordance with citations:
+
+```python
+from collections import defaultdict
+
+concordance = defaultdict(list)
+for doc in reader.docs():
+    for token in doc:
+        if token.is_alpha:
+            concordance[token.lemma_.lower()].append(
+                (doc._.fileid, token.text)
+            )
+
+# Look up entries
+for fileid, form in concordance["amor"][:10]:
+    print(f"{fileid}: {form}")
+```
+
+### 5. Process Specific Authors/Works
+Filter by filename pattern:
+
+```python
+# Only Vergil
+for doc in reader.docs(reader.fileids(match=r"^vergil\.")):
+    print(doc._.fileid)
+
+# Only Cicero's speeches
+cicero_speeches = reader.fileids(match=r"^cicero\..*(?:cat|phil|verr)")
+for sent in reader.sents(cicero_speeches, as_text=True):
+    print(sent[:80])
+```
+
+### 6. Minimal Overhead for Sentence Tokenization
+When you only need sentence boundaries:
+
+```python
+reader = TesseraeReader(path, annotation_level=AnnotationLevel.TOKENIZE)
+
+# Fast sentence iteration (no lemmatization/POS)
+for sent in reader.sents(as_text=True):
+    print(sent)
+```
+
+---
+
+## Documentation Guidelines
+
+When adding new methods or attributes:
+
+1. **Add to API Reference** - Include in the appropriate table with return type and NLP requirement
+2. **Add docstring** - Google style with Args, Returns, Yields, Example sections
+3. **Add tests** - At minimum: happy path, edge cases, error conditions
+4. **Add use case** - If the method enables a new workflow, add an example to Use Cases section
+5. **Update type hints** - All public methods must have complete type annotations
