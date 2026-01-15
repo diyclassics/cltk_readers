@@ -2,15 +2,21 @@
 latincy-readers: Corpus readers for Latin texts with LatinCy/spaCy integration.
 
 Example usage:
-    from latincyreaders import TesseraeReader
+    from latincyreaders import TesseraeReader, PlaintextReader, LatinLibraryReader
 
-    reader = TesseraeReader()
+    reader = TesseraeReader("/path/to/tesserae")
     for doc in reader.docs():
         print(doc.text[:100])
 """
 
 from latincyreaders.core.base import AnnotationLevel
 from latincyreaders.readers.tesserae import TesseraeReader
+from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
 
 __version__ = "1.0.0a1"
-__all__ = ["TesseraeReader", "AnnotationLevel"]
+__all__ = [
+    "TesseraeReader",
+    "PlaintextReader",
+    "LatinLibraryReader",
+    "AnnotationLevel",
+]
