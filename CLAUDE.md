@@ -258,6 +258,85 @@ span._.citation  # str: citation string, e.g. "<verg. aen. 1.1>"
 token._.citation # tuple: (citation_str, token_index)
 ```
 
+### PlaintextReader
+
+#### Constructor
+```python
+PlaintextReader(
+    root: str | Path,                              # Corpus directory
+    fileids: str = "**/*.txt",                     # Glob pattern
+    encoding: str = "utf-8",                       # File encoding
+    annotation_level: AnnotationLevel = BASIC,     # NLP level
+)
+```
+
+#### Core Methods (inherited from BaseCorpusReader)
+Same as TesseraeReader core methods.
+
+#### Plaintext-Specific Methods
+| Method | Returns | NLP Required | Description |
+|--------|---------|--------------|-------------|
+| `paras(fileids=None, as_text=False)` | `Iterator[Span\|str]` | Optional | Yield paragraphs |
+
+### LatinLibraryReader
+Extends `PlaintextReader` with auto-discovery of CLTK Latin Library corpus.
+
+#### Constructor
+```python
+LatinLibraryReader(
+    root: str | Path | None = None,                # Auto-discovers if None
+    fileids: str = "**/*.txt",
+    encoding: str = "utf-8",
+    annotation_level: AnnotationLevel = BASIC,
+)
+```
+
+### TEIReader
+
+#### Constructor
+```python
+TEIReader(
+    root: str | Path,                              # Corpus directory
+    fileids: str = "**/*.xml",                     # Glob pattern
+    encoding: str = "utf-8",                       # File encoding
+    annotation_level: AnnotationLevel = BASIC,     # NLP level
+    namespaces: dict[str, str] | None = None,      # XML namespaces
+    remove_notes: bool = True,                     # Remove <note> elements
+)
+```
+
+#### Core Methods (inherited from BaseCorpusReader)
+Same as TesseraeReader core methods.
+
+#### TEI-Specific Methods
+| Method | Returns | NLP Required | Description |
+|--------|---------|--------------|-------------|
+| `paras(fileids=None, as_text=False)` | `Iterator[Span\|str]` | Optional | Yield TEI paragraphs |
+
+#### XML Handling
+- Handles TEI namespace (`http://www.tei-c.org/ns/1.0`) automatically
+- Extracts title/author from `<teiHeader>` into Doc metadata
+- Removes `<note>` elements by default (configurable)
+
+### PerseusReader
+Extends `TEIReader` for Perseus Digital Library files.
+
+#### Constructor
+```python
+PerseusReader(
+    root: str | Path,                              # Corpus directory
+    fileids: str = "**/*.xml",
+    encoding: str = "utf-8",
+    annotation_level: AnnotationLevel = BASIC,
+    remove_notes: bool = True,
+)
+```
+
+#### Perseus-Specific Methods
+| Method | Returns | NLP Required | Description |
+|--------|---------|--------------|-------------|
+| `headers(fileids=None)` | `Iterator[dict]` | No | Yield TEI header metadata |
+
 ---
 
 ## Use Cases
@@ -358,6 +437,43 @@ reader = TesseraeReader(path, annotation_level=AnnotationLevel.TOKENIZE)
 # Fast sentence iteration (no lemmatization/POS)
 for sent in reader.sents(as_text=True):
     print(sent)
+```
+
+### 7. Process TEI/XML Files from Perseus
+Read TEI-encoded texts from Perseus Digital Library:
+
+```python
+from latincyreaders import PerseusReader, AnnotationLevel
+
+reader = PerseusReader("/path/to/perseus/data", annotation_level=AnnotationLevel.TOKENIZE)
+
+# Get metadata from TEI headers
+for header in reader.headers():
+    print(f"{header.get('author', 'Unknown')}: {header.get('title', 'Untitled')}")
+
+# Process paragraphs (notes automatically removed)
+for para in reader.paras(as_text=True):
+    print(f"Para: {para[:80]}...")
+
+# Access full docs with metadata
+for doc in reader.docs():
+    print(f"File: {doc._.fileid}")
+    print(f"Title: {doc._.metadata.get('title')}")
+    print(f"Author: {doc._.metadata.get('author')}")
+    print(f"Sentences: {len(list(doc.sents))}")
+```
+
+### 8. Generic TEI Processing
+For custom TEI files outside of Perseus:
+
+```python
+from latincyreaders import TEIReader
+
+# Include notes in extraction
+reader = TEIReader("/path/to/tei", remove_notes=False)
+
+for text in reader.texts():
+    print(text[:200])
 ```
 
 ---

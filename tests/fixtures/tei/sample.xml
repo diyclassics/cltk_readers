@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>De Amicitia (Sample)</title>
+        <author>M. Tullius Cicero</author>
+      </titleStmt>
+    </fileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div type="chapter" n="1">
+        <p>Q. Mucius augur multa narrare de C. Laelio socero suo memoriter et iucunde solebat nec dubitare illum in omni sermone appellare sapientem.</p>
+        <p>Ego autem a patre ita eram deductus ad Scaevolam sumpta virili toga, ut, quoad possem et liceret, a senis latere numquam discederem. <note>This is an editorial note that should be removed.</note></p>
+      </div>
+      <div type="chapter" n="2">
+        <p>Cum saepe multa, tum memini domi in hemicyclio sedentem, ut solebat, cum et ego essem una et pauci admodum familiares.</p>
+        <p>In eum sermonem illum incidere, qui tum fere multis erat in ore.</p>
+      </div>
+    </body>
+  </text>
+</TEI>

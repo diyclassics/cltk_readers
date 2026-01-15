@@ -20,3 +20,15 @@ def tesserae_dir(fixtures_dir) -> Path:
 def sample_tess_file(tesserae_dir) -> Path:
     """Path to sample .tess file."""
     return tesserae_dir / "tesserae.tess"
+
+
+@pytest.fixture
+def tei_dir(fixtures_dir) -> Path:
+    """Path to TEI test fixtures."""
+    return fixtures_dir / "tei"
+
+
+@pytest.fixture
+def sample_tei_file(tei_dir) -> Path:
+    """Path to sample TEI XML file."""
+    return tei_dir / "sample.xml"
