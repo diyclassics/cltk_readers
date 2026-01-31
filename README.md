@@ -62,4 +62,9 @@ Version 0.6.10; tested on Python 3.11.11, CLTK 14.0; LatinCy 3.8.0
 - 0.2.4: Add support for Universal Dependencies files
 - 0.2.3: Add support for Perseus AGLDT Treebanks
 
+## Bibliography
+
+- Bird, S., E. Loper, and E. Klein. 2009. *Natural Language Processing with Python*. O'Reilly: Sebastopol, CA.
+- Bengfort, B., R. Bilbro, and T. Ojeda. 2018. *Applied Text Analysis with Python: Enabling Language-Aware Data Products with Machine Learning*. O'Reilly: Sebastopol, CA.
+
 *Coded 2022-2024 by [Patrick J. Burns](http://github.com/diyclassics)*
